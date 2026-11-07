@@ -1,0 +1,6 @@
+numpy>=1.26
+scipy>=1.11
+statsmodels>=0.14
+playwright>=1.45
+# Optional: install torch to add a PyTorch cross-check to the oracle.
+# torch>=2.3
