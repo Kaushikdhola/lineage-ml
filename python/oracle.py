@@ -391,3 +391,7 @@ if __name__ == "__main__":
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(enc(data)))
     print(f"oracle: wrote {OUT.relative_to(ROOT)}")
+
+    import runpy
+
+    runpy.run_path(str(Path(__file__).with_name("oracle_aggregation.py")), run_name="__main__")
