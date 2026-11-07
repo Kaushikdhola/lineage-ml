@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Token X-ray: what your trainer actually does to every token</title>
+    <meta
+      name="description"
+      content="Radiographs of real training steps: the gradient weight every token actually received, measured through unmodified training code, and the places where documents leak into each other."
+    />
+    <meta property="og:title" content="Token X-ray" />
+    <meta
+      property="og:description"
+      content="A loss function is an equation. A trainer is a program. These are radiographs of the program."
+    />
+    <meta property="og:type" content="article" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#E8EDF0" />
+    <link rel="icon" href="data:," />
+    <link
+      rel="preload"
+      href="/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+  </head>
+  <body>
+    <a class="skip" href="#story">Skip to the story</a>
+
+    <header class="hero" id="top">
+      <div class="hero-text">
+        <h1>Token <span class="nowrap">X-ray</span></h1>
+        <p class="lead">
+          A loss function is an equation. A trainer is a program. These are radiographs of the program: the
+          gradient weight every token actually received, measured through unmodified training code.
+        </p>
+        <p class="hero-meta">
+          <code class="install">pip install token-xray</code>
+          <a class="text-link" href="#story">Start with the equation</a>
+        </p>
+      </div>
+      <figure class="plate plate-hero" data-film="hero" aria-describedby="hero-cap">
+        <figcaption id="hero-cap" class="plate-cap"></figcaption>
+      </figure>
+    </header>
+
+    <main id="story">
+      <section class="chapter" id="vote">
+        <div class="prose">
+          <h2>Every token gets a vote</h2>
+          <p>
+            A language model is trained on the average loss over the tokens in a batch. With <i>N</i> target
+            tokens, each one's gradient is scaled by exactly the same amount:
+          </p>
+          <div class="eq" data-tex="token-mean"></div>
+          <p>
+            On a radiograph of one training step, where each cell is a token and its brightness is the weight
+            it received, that is an even, featureless grey. Featureless is healthy. Rows are sequences; their
+            length is the number of tokens they contribute.
+          </p>
+        </div>
+        <figure class="plate" data-film="reference"><figcaption class="plate-cap"></figcaption></figure>
+      </section>
+
+      <section class="chapter scrolly" id="accumulation">
+        <div class="prose">
+          <h2>Splitting the batch should change nothing</h2>
+          <p>
+            Large batches rarely fit in memory, so trainers split them into micro-batches and add up the
+            gradients. Done right, the radiograph cannot tell the difference.
+          </p>
+        </div>
+        <div class="scrolly-body">
+          <figure class="plate sticky" data-film="accumulation">
+            <figcaption class="plate-cap"></figcaption>
+          </figure>
+          <ol class="steps">
+            <li class="step" data-step="hf-ga">
+              <h3>The transformers Trainer, four accumulation steps</h3>
+              <p>
+                Twelve sequences, four micro-batches of three, through the unmodified <code>Trainer</code>.
+                Every token lands within 10<sup>−7</sup> of its intended weight. This is a real run.
+              </p>
+            </li>
+            <li class="step" data-step="emu-mean-of-means">
+              <h3>Average each micro-batch first, then average the averages</h3>
+              <p>
+                Micro-batches with few tokens now count as much as micro-batches with many, so their tokens
+                get louder. The bands are the bug. This is the mechanism behind the gradient-accumulation loss
+                bug that transformers fixed in October 2024, reproduced in plain PyTorch.
+              </p>
+            </li>
+            <li class="step" data-step="emu-dropped">
+              <h3>Keep only the first micro-batch</h3>
+              <p>
+                Three quarters of the batch goes dark and nothing crashes. This is the mechanism reported for
+                an optimizer-offload path in DeepSpeed, one of the silent bugs that undermined a line of
+                published fine-tuning baselines until a 2026 paper found it.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="chapter" id="objectives">
+        <div class="prose">
+          <h2>Some objectives tilt the vote on purpose</h2>
+          <p>
+            Reinforcement learning on language models scores whole answers. Six answers to one prompt, three
+            right and three wrong, and three ways to turn their rewards into token weights. Brightness is how
+            hard each token is pushed; the label says which way.
+          </p>
+          <div class="objective-tabs" role="tablist" aria-label="Objective">
+            <button role="tab" data-objective="grpo" aria-selected="true">GRPO</button>
+            <button role="tab" data-objective="dr-grpo" aria-selected="false">Dr. GRPO</button>
+            <button role="tab" data-objective="dapo" aria-selected="false">DAPO</button>
+          </div>
+          <div class="eq" data-tex="objective" aria-live="polite"></div>
+          <p class="objective-note" aria-live="polite"></p>
+          <label class="slider">
+            <span>Length of the long wrong answer</span>
+            <input type="range" min="20" max="160" step="1" value="60" data-control="long-wrong" />
+            <output data-out="long-wrong">60 tokens</output>
+          </label>
+        </div>
+        <figure class="plate" data-film="objectives"><figcaption class="plate-cap"></figcaption></figure>
+      </section>
+
+      <section class="chapter" id="settings">
+        <div class="prose">
+          <h2>Small settings rewrite the objective</h2>
+          <p>
+            None of these is a library bug. Each is a configuration that quietly changes which tokens count,
+            and each shows up on the film.
+          </p>
+        </div>
+        <div class="plate-row">
+          <figure class="plate small" data-film="hf-left"><figcaption class="plate-cap"></figcaption></figure>
+          <figure class="plate small" data-film="hf-smoothing">
+            <figcaption class="plate-cap"></figcaption>
+          </figure>
+          <figure class="plate small" data-film="emu-pad-eos">
+            <figcaption class="plate-cap"></figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="chapter" id="leaks">
+        <div class="prose">
+          <h2>Documents that read each other</h2>
+          <p>
+            Packing several documents into one row saves padding, as long as they cannot see each other. Here,
+            one document at a time is given a loss, and every other document should receive exactly zero
+            gradient. Each film is a grid: the row is the document with the loss, the column is the document
+            that received gradient.
+          </p>
+        </div>
+        <div class="plate-row leak-row" data-leaks></div>
+        <aside class="finding">
+          <h3>A candidate finding</h3>
+          <p>
+            transformers detects packed documents from <code>position_ids</code> only when no cache object
+            exists. Most model configs default to <code>use_cache=True</code>, which creates one even in
+            training mode. A hand-written loop that feeds packed <code>position_ids</code> without
+            <code>use_cache=False</code> lets documents attend to each other, with no warning. The
+            <code>Trainer</code> is not affected: it sets the flag from its arguments. Measured on
+            <span data-version="transformers"></span>. Treat it as a candidate until the maintainers confirm
+            it.
+          </p>
+        </aside>
+      </section>
+
+      <section class="chapter" id="yours">
+        <div class="prose">
+          <h2>X-ray your own training step</h2>
+          <p>
+            Write a function that batches the probe's sequences exactly as your trainer does and runs one
+            backward pass. Token X-ray swaps in a tiny model whose every token is a unique tracer and reads
+            back the weight each one received.
+          </p>
+          <pre class="code"><code>from token_xray import xray
+
+def my_step(model, sequences):
+    batch = my_collator(sequences)       # your code
+    loss = my_loss(model, batch)         # your code
+    loss.backward()
+
+report = xray(my_step, lengths=[5, 9, 3, 12, 7, 4, 10, 6])
+report.assert_token_mean()               # fails loudly if any token is off</code></pre>
+          <p>
+            Every check in the package is tested in both directions: it passes on correct code and fails on
+            the bug it claims to catch. Corrupting the readout, the probe, a closed form or the leak harness
+            makes the suite fail.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="colophon">
+      <h2>How these films were made</h2>
+      <p>
+        Real runs use the unmodified library named on the film. Emulations reproduce the documented mechanism
+        of a historical bug in plain PyTorch and are labelled on the film's edge. Measured with
+        <span data-versions></span>. Weights are shown as <i>w</i>·<i>N</i>, so a correct global token mean is
+        1.0; the instrument's precision floor is about 10<sup>−7</sup>.
+      </p>
+      <p>
+        The probe is a two-layer LLaMA with untied embeddings. In weight mode its attention output is zeroed,
+        so each token's loss depends only on its own embedding and the gradient the stack produces at token
+        <i>i</i> is <i>w<sub>i</sub></i> times that token's unit gradient. The readout recovers
+        <i>w<sub>i</sub></i> and a cosine that drops below 1 when the change is not a pure rescaling.
+      </p>
+      <p class="links">
+        <a class="text-link" href="https://github.com/">Source and tests on GitHub</a>
+        <a class="text-link" href="/">The Lineage atlas of AI formulas</a>
+      </p>
+    </footer>
+
+    <script type="module" src="/src/story/main.ts"></script>
+  </body>
+</html>
