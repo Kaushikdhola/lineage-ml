@@ -13,7 +13,22 @@ echo "→ 1/4  JavaScript dependencies"
 npm ci --no-audit --no-fund
 
 echo "→ 2/4  Python environment (.venv) for the oracle and browser testing"
-python3 -m venv .venv
+# Pick the newest Python available (override with PYTHON=/path/to/python). Python 3.10.0 has a
+# dataclass(slots=True) bug that crashes pytest >= 9.2, so anything older than 3.10.2 is rejected.
+PY="${PYTHON:-}"
+if [ -z "$PY" ]; then
+  for c in python3.13 python3.12 python3.11 python3; do
+    if command -v "$c" >/dev/null 2>&1; then PY="$c"; break; fi
+  done
+fi
+ok_py() { "$1" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10, 2) else 1)' 2>/dev/null; }
+ok_py "$PY" || { echo "✗ $("$PY" -V 2>&1) is too old. Install Python 3.11+ (e.g. brew install python@3.12) or set PYTHON=/path/to/python"; exit 1; }
+if [ -x .venv/bin/python ] && ! ok_py .venv/bin/python; then
+  echo "   rebuilding .venv: $(.venv/bin/python -V 2>&1) is too old"
+  rm -rf .venv
+fi
+[ -x .venv/bin/python ] || "$PY" -m venv .venv
+echo "   using $(.venv/bin/python -V)"
 .venv/bin/pip install -q --upgrade pip
 .venv/bin/pip install -q -r python/requirements.txt
 .venv/bin/python -m playwright install chromium
