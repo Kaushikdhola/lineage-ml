@@ -20,6 +20,24 @@ export interface Citation {
   status: "unverified" | "verified";
 }
 
+/**
+ * Ablation mode: "delete a term, watch AI break". The reader drags `token` out of the formula,
+ * guesses what happens, then sees `simulator` (src/sim) run the experiment with and without it.
+ */
+export interface Ablation {
+  /** Token key (from the formula's tex) that gets deleted. */
+  token: string;
+  /** Short action label: "Delete √d_k". */
+  label: string;
+  /** Asked before the result is revealed. */
+  question: string;
+  choices: [string, string, string];
+  /** Index into choices. Must agree with what the simulator's tests demonstrate. */
+  answer: 0 | 1 | 2;
+  /** Simulator id in src/sim. */
+  simulator: string;
+}
+
 export interface Formula {
   id: string;
   name: string;
@@ -35,6 +53,7 @@ export interface Formula {
   citation?: Citation;
   /** Hub formulas appear across families ("one idea, many worlds"). */
   hub?: boolean;
+  ablations?: Ablation[];
 }
 
 export interface Edge {
@@ -44,6 +63,8 @@ export interface Edge {
   op: string;
   /** historical: the child was actually developed from the parent. conceptual: a teaching link. */
   kind: "historical" | "conceptual";
+  /** What broke that this step fixed, as the source describes it. Only where a source says so. */
+  problem?: string;
 }
 
 export const FAMILY_LABEL: Record<Family, string> = {

@@ -211,3 +211,59 @@ describe("invariants", () => {
     expect(() => core.passAtK(5, 6, 1)).toThrow();
   });
 });
+
+describe("statistics for simulators", () => {
+  const S = F.stats;
+  it("log-gamma and the regularized incomplete beta match SciPy", () => {
+    for (const c of S.lgamma) close(core.logGamma(c.x), c.v, 1e-13, 1e-14);
+    for (const c of S.betainc) close(core.regularizedBeta(c.x, c.a, c.b), c.v, 1e-12, 1e-15);
+  });
+  it("Student-t CDF and quantiles match scipy.stats.t", () => {
+    for (const c of S.tcdf) close(core.studentTCdf(c.t, c.df), c.cdf, 1e-12, 1e-15);
+    for (const c of S.tq) close(core.studentTQuantile(c.p, c.df), c.q, 1e-11, 1e-13);
+  });
+  it("Student-t quantiles are exact where closed forms exist (df = 1, 2)", () => {
+    for (const p of [0.6, 0.9, 0.975, 0.995, 0.01]) {
+      close(core.studentTQuantile(p, 1), Math.tan(Math.PI * (p - 0.5)), 1e-13, 1e-15);
+      close(core.studentTQuantile(p, 2), (2 * p - 1) / Math.sqrt(2 * p * (1 - p)), 1e-13, 1e-15);
+    }
+  });
+  it("mean and 95% t-interval match SciPy", () => {
+    for (const c of S.meanci) {
+      const r = core.meanCI(c.xs);
+      close(r.mean, c.mean, 1e-13);
+      close(r.sd, c.sd, 1e-12);
+      close(r.lo, c.lo, 1e-11, 1e-13);
+      close(r.hi, c.hi, 1e-11, 1e-13);
+    }
+    expect(() => core.meanCI([1])).toThrow();
+    expect(() => core.meanCI([1, NaN])).toThrow();
+  });
+});
+
+describe("retrieval training (ablation simulator for √d_k)", () => {
+  const R = F.retrieval;
+  it("loss, attention entropy and softmax Jacobian norm match NumPy; gradient matches finite differences", () => {
+    const st = R.step;
+    for (const c of st.cases) {
+      const r = core.retrievalLossGrad(st.W, st.K, st.V, { X: st.X, targets: st.targets }, c.scale);
+      close(r.loss, c.loss, 1e-12, 1e-14);
+      close(r.entropy, c.entropy, 1e-12, 1e-14);
+      close(r.jacobianNorm, c.jacobianNorm, 1e-12, 1e-14);
+      // central differences with h = 1e-6 carry O(h²) truncation and ~1e-10 rounding error
+      closeAll(r.grad, c.gradFD, 1e-6, 1e-7);
+    }
+  });
+  it("whole seeded training runs reproduce the NumPy port step by step (PRNG, data order, init, SGD)", () => {
+    const { cfg, cases } = R.runs;
+    for (const c of cases) {
+      const run = core.trainRetrieval(c.seed, { ...cfg, scale: c.scale, lr: c.lr });
+      expect(run.loss).toHaveLength(c.loss.length);
+      closeAll(run.loss, c.loss, 1e-9, 1e-12);
+    }
+  });
+  it("softmax Jacobian norm is 0 for one-hot weights and largest near uniform", () => {
+    expect(core.softmaxJacobianNorm([0, 1, 0])).toBe(0);
+    expect(core.softmaxJacobianNorm([0.5, 0.5])).toBeGreaterThan(core.softmaxJacobianNorm([0.9, 0.1]));
+  });
+});

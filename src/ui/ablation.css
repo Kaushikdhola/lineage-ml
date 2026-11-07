@@ -1,0 +1,322 @@
+/* ---------- ablation mode: delete a term, watch it break ---------- */
+
+/* the deletable term, in place */
+.formula-stage .is-ablatable {
+  user-select: none;
+  position: relative;
+  z-index: 1;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 4px;
+  box-shadow: inset 0 -1px 0 rgba(232, 194, 106, 0.7);
+  transition:
+    background-color 0.18s,
+    box-shadow 0.18s,
+    opacity 0.15s;
+}
+.formula-stage .is-ablatable:hover,
+.formula-stage .is-ablatable.is-hot,
+.formula-stage .is-ablatable:focus-visible {
+  background: rgba(232, 194, 106, 0.12);
+  box-shadow:
+    inset 0 -1px 0 var(--warn),
+    0 0 0 3px rgba(232, 194, 106, 0.12);
+  outline: none;
+}
+.formula-stage .is-ablatable.is-lifted {
+  opacity: 0.18;
+}
+.stage.is-dragging,
+.stage.is-dragging * {
+  user-select: none;
+}
+.stage.is-dragging {
+  background: rgba(232, 194, 106, 0.035);
+}
+.stage.is-ablated {
+  border-top-color: rgba(232, 194, 106, 0.4);
+  border-bottom-color: rgba(232, 194, 106, 0.4);
+}
+.tok-ghost {
+  position: fixed;
+  z-index: 60;
+  margin: 0;
+  color: var(--warn);
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 0 18px rgba(232, 194, 106, 0.55);
+  transform-origin: 50% 50%;
+}
+
+/* the panel under the stage */
+.ablate {
+  margin: 0 0 30px;
+}
+.ab-k {
+  margin-right: 8px;
+  font: 11.5px var(--mono);
+  color: var(--warn);
+}
+.ab-hint {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14.5px;
+}
+.ab-glyph {
+  font-size: 1.12em;
+  color: var(--ink);
+}
+.ab-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+.tok-chip {
+  padding: 3px 12px 5px;
+  border: 1px dashed rgba(232, 194, 106, 0.6);
+  border-radius: 6px;
+  color: var(--warn);
+  font-size: 19px;
+  cursor: grab;
+  touch-action: none;
+}
+.tok-chip .ab-glyph {
+  color: var(--warn);
+}
+.tok-chip:hover {
+  border-style: solid;
+  background: rgba(232, 194, 106, 0.08);
+}
+.ab-tray-hint {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.ab-q {
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.ab-q legend {
+  max-width: 34ch;
+  margin-bottom: 14px;
+  padding: 0;
+  font: 600 25px/1.12 var(--display);
+  letter-spacing: 0.01em;
+}
+.ab-choices {
+  display: grid;
+  gap: 8px;
+}
+.ab-choice {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  align-items: baseline;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink-2);
+  font-size: 14.5px;
+  line-height: 1.45;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    opacity 0.3s;
+}
+.ab-choice:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--panel);
+  color: var(--ink);
+}
+.ab-letter {
+  font: 12px var(--mono);
+  color: var(--ink-3);
+}
+.ab-choice:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.ab-choice.is-chosen,
+.ab-choice.is-answer {
+  opacity: 1;
+}
+.ab-choice.is-chosen {
+  border-color: var(--warn);
+}
+.ab-choice.is-answer {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--ink);
+}
+.ab-choice.is-answer .ab-letter {
+  color: var(--accent);
+}
+
+.ab-result {
+  margin-top: 22px;
+}
+.ab-verdict {
+  margin: 0;
+  font: 600 24px/1.15 var(--display);
+}
+.ab-verdict.right {
+  color: var(--accent);
+}
+.ab-verdict.wrong {
+  color: var(--warn);
+}
+.ab-verdict span {
+  display: block;
+  max-width: 62ch;
+  margin-top: 8px;
+  color: var(--ink-2);
+  font: 15px/1.55 var(--sans);
+}
+.ab-status {
+  margin: 10px 0 0;
+  font: 12px var(--mono);
+  color: var(--ink-3);
+}
+.ab-error {
+  color: var(--warn);
+}
+
+.ab-figure {
+  margin: 22px 0 6px;
+}
+.ab-figure figcaption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+  font: 600 17px var(--display);
+}
+.ab-n {
+  font: 11.5px var(--mono);
+  color: var(--ink-3);
+}
+.sim-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.sim-chart .grid {
+  stroke: var(--line);
+}
+.sim-chart .axis {
+  stroke: var(--line-strong);
+}
+.sim-chart .tick,
+.sim-chart .label {
+  font: 10.5px var(--mono);
+  fill: var(--ink-3);
+}
+.sim-chart .band {
+  stroke: none;
+}
+.sim-chart .band.intact {
+  fill: rgba(94, 227, 214, 0.18);
+}
+.sim-chart .band.ablated {
+  fill: rgba(232, 194, 106, 0.18);
+}
+.sim-chart .mean {
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+.sim-chart .mean.intact {
+  stroke: var(--accent);
+}
+.sim-chart .mean.ablated {
+  stroke: var(--warn);
+}
+.sim-chart .end {
+  font: 500 12.5px var(--sans);
+}
+.sim-chart .end.intact {
+  fill: var(--accent);
+}
+.sim-chart .end.ablated {
+  fill: var(--warn);
+}
+
+.ab-stats {
+  width: 100%;
+  margin: 14px 0 8px;
+  border-collapse: collapse;
+}
+.ab-stats th,
+.ab-stats td {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+}
+.ab-stats thead th {
+  padding-top: 0;
+  border-top: 0;
+  font: 11.5px var(--mono);
+  text-align: right;
+}
+.ab-stats thead th.intact {
+  color: var(--accent);
+}
+.ab-stats thead th.ablated {
+  color: var(--warn);
+}
+.ab-stats tbody th {
+  padding-right: 16px;
+  text-align: left;
+  font-weight: 500;
+  font-size: 14px;
+}
+.ab-stats small {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-3);
+  font: 400 12px/1.45 var(--sans);
+}
+.ab-stats td {
+  min-width: 118px;
+  text-align: right;
+  font: 14px var(--mono);
+}
+.ab-stats td small {
+  font: 11px var(--mono);
+}
+.ab-stats td.ablated {
+  color: var(--warn);
+}
+.ab-method summary {
+  cursor: pointer;
+  font: 12px var(--mono);
+  color: var(--ink-2);
+}
+.ab-method p {
+  max-width: 70ch;
+  color: var(--ink-3);
+  font-size: 13.5px;
+}
+
+@media (max-width: 720px) {
+  .ab-q legend {
+    font-size: 21px;
+  }
+  .ab-stats td {
+    min-width: 92px;
+    font-size: 13px;
+  }
+  .ab-stats tbody th small {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ab-choice,
+  .formula-stage .is-ablatable {
+    transition: none;
+  }
+}

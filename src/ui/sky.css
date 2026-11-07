@@ -1,0 +1,623 @@
+/* ---------- shared controls ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--ink-2);
+  font-size: 13px;
+  background: rgba(5, 7, 10, 0.6);
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.chip:hover {
+  color: var(--ink);
+  border-color: #3b4752;
+}
+kbd {
+  font: 10.5px/1 var(--mono);
+  color: var(--ink-3);
+  padding: 3px 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* lab header additions */
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.top .mark {
+  padding: 0;
+  color: var(--ink);
+}
+.lab.is-entering {
+  animation: lab-in 0.9s ease both;
+}
+.lab.is-leaving {
+  animation: lab-out 0.6s ease both;
+}
+@keyframes lab-in {
+  0% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lab-out {
+  to {
+    opacity: 0;
+  }
+}
+.lift-ghost {
+  position: fixed;
+  z-index: 50;
+  margin: 0;
+  color: var(--ink);
+  transform-origin: 0 0;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 0 22px rgba(94, 227, 214, 0.35);
+}
+
+/* ---------- the sky ---------- */
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  background: var(--bg);
+  overflow: hidden;
+  transition: opacity 0.45s ease;
+}
+.sky.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+.sky.is-arriving {
+  opacity: 0;
+  transition: none;
+}
+.sky-canvas,
+.sky-canvas canvas,
+.sky-canvas svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.sky-canvas canvas {
+  cursor: grab;
+}
+.sky-leader {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.sky-leader line {
+  stroke: var(--accent);
+  stroke-opacity: 0.4;
+  stroke-width: 1;
+  transition: opacity 0.3s;
+}
+
+.sky-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 26px 32px;
+  pointer-events: none;
+}
+.sky-top > * {
+  pointer-events: auto;
+}
+.sky-brand .mark {
+  margin: 0;
+  font: 600 28px/1 var(--display);
+  letter-spacing: 0.26em;
+}
+.sky-tag {
+  margin: 10px 0 0;
+  max-width: 34ch;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.sky-actions {
+  display: flex;
+  gap: 10px;
+}
+.is-touring [data-act="tour"] {
+  color: var(--accent);
+  border-color: rgba(94, 227, 214, 0.4);
+}
+
+.sky-legend {
+  position: absolute;
+  left: 32px;
+  bottom: 26px;
+  margin: 0;
+  max-width: 44ch;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+.sky-legend span {
+  display: block;
+}
+.sky-legend .sky-hint {
+  margin-top: 6px;
+  color: var(--ink-2);
+}
+.sky-count {
+  position: absolute;
+  right: 32px;
+  bottom: 26px;
+  margin: 0;
+  text-align: right;
+  font: 11.5px/1.6 var(--mono);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.has-card .sky-count,
+.has-card .sky-legend {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+/* hover label: a plate beside the star */
+.sky-hover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 300px;
+  padding: 9px 12px 10px;
+  border-left: 1px solid var(--accent);
+  background: rgba(5, 7, 10, 0.84);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  will-change: transform;
+}
+.sky-hover.flip {
+  border-left: 0;
+  border-right: 1px solid var(--accent);
+  text-align: right;
+}
+.sky-hover strong {
+  display: block;
+  font: 600 21px/1.05 var(--display);
+  letter-spacing: 0.01em;
+}
+.sky-hover .tip-meta {
+  display: block;
+  margin-top: 3px;
+  font: 11px var(--mono);
+  color: var(--accent);
+}
+.sky-hover .tip-idea {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+/* the card: the middle level of the zoom */
+.card {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  width: min(460px, 38vw);
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  transform: translateY(-50%);
+  padding: 24px 28px 22px;
+  background: rgba(6, 9, 12, 0.88);
+  border: 1px solid var(--line);
+  border-top-color: rgba(94, 227, 214, 0.45);
+  backdrop-filter: blur(10px);
+  animation: card-in 0.5s ease 0.35s both;
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-50% + 12px));
+  }
+}
+.card-meta {
+  margin: 0;
+  font: 11.5px var(--mono);
+  color: var(--accent);
+}
+.card-name {
+  margin: 6px 0 0;
+  font: 600 40px/1 var(--display);
+  letter-spacing: 0.01em;
+}
+.card-formula {
+  margin: 18px 0 4px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+.card-formula .formula-stage {
+  font-size: inherit;
+}
+.card-idea {
+  margin: 14px 0 18px;
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.card-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.card-links h3 {
+  margin-bottom: 6px;
+}
+.star-chip {
+  display: block;
+  margin: 0 0 4px;
+  padding: 2px 0;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+.star-chip:hover {
+  color: var(--ink);
+  text-decoration-color: var(--accent);
+}
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.btn:hover {
+  color: var(--ink);
+}
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #03201d;
+  font-weight: 500;
+}
+.btn.primary kbd {
+  color: #03201d;
+  border-color: rgba(3, 32, 29, 0.35);
+}
+.formula-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  left: -9999px;
+  top: 0;
+}
+.formula-measure .katex-display {
+  margin: 0;
+  display: inline-block;
+}
+
+/* tour caption: the step's name */
+.tour-caption {
+  position: absolute;
+  left: 32px;
+  bottom: 30px;
+  max-width: min(640px, 52vw);
+  pointer-events: none;
+}
+.tour-caption .step {
+  display: block;
+  font: 11.5px var(--mono);
+  color: var(--accent);
+}
+.tour-caption .op {
+  display: block;
+  margin-top: 4px;
+  font: 600 34px/1.05 var(--display);
+  letter-spacing: 0.01em;
+}
+.tour-caption .kind {
+  display: inline-block;
+  margin: 10px 0 0;
+}
+.tour-caption.pulse .op {
+  animation: op-in 0.7s ease both;
+}
+@keyframes op-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ---------- 2D constellation ---------- */
+.constellation {
+  background: var(--bg);
+}
+.c2d-ring {
+  fill: none;
+  stroke: rgba(143, 163, 173, 0.16);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.c2d-gen {
+  font: 500 0.8px var(--mono);
+  fill: var(--ink-3);
+  text-anchor: middle;
+}
+.c2d-family {
+  font: 600 1.7px var(--display);
+  letter-spacing: 0.3px;
+  fill: rgba(176, 194, 202, 0.62);
+}
+.c2d-family,
+.c2d-gen {
+  transition: opacity 0.4s;
+}
+.is-zoomed .c2d-family {
+  opacity: 0.12;
+}
+.c2d-edge {
+  fill: none;
+  stroke: #dde6e8;
+  stroke-opacity: 0.14;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.c2d-edge.historical {
+  stroke-opacity: 0.26;
+}
+.c2d-edge.is-lit {
+  stroke: var(--accent);
+  stroke-opacity: 0.9;
+}
+.c2d-core {
+  fill: #dde6e8;
+}
+.c2d-star.hub .c2d-core,
+.c2d-star.is-hover .c2d-core,
+.c2d-star.is-path .c2d-core,
+.c2d-star.is-selected .c2d-core {
+  fill: var(--accent);
+}
+.c2d-sel {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+}
+.c2d-star.is-selected .c2d-sel {
+  opacity: 1;
+}
+.has-selection .c2d-star:not(.is-selected):not(.is-path):not(.hub) {
+  opacity: 0.45;
+}
+
+/* ---------- search ---------- */
+dialog.search {
+  top: 14vh;
+  margin: 0 auto;
+  width: min(640px, calc(100vw - 32px));
+  padding: 0;
+  color: var(--ink);
+  background: #0a0e12;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+dialog.search::backdrop {
+  background: rgba(2, 4, 6, 0.72);
+  backdrop-filter: blur(3px);
+}
+dialog.search input::-webkit-search-cancel-button {
+  display: none;
+}
+dialog.search input {
+  width: 100%;
+  padding: 18px 20px;
+  font: 17px var(--sans);
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  outline: none;
+}
+dialog.search ul {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+dialog.search li[role="option"] {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  padding: 9px 20px 10px 18px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+dialog.search li[aria-selected="true"] {
+  background: var(--accent-dim);
+  border-left-color: var(--accent);
+}
+.r-name {
+  font: 600 20px/1.1 var(--display);
+}
+.r-fam {
+  font: 11px var(--mono);
+  color: var(--accent);
+  align-self: center;
+}
+.r-idea {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.r-empty {
+  padding: 16px 20px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.search-hint {
+  margin: 0;
+  padding: 10px 20px 12px;
+  border-top: 1px solid var(--line);
+  font: 11px var(--mono);
+  color: var(--ink-3);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ---------- narrow screens ---------- */
+@media (max-width: 900px) {
+  .card {
+    right: 16px;
+    width: min(420px, calc(100vw - 32px));
+  }
+}
+@media (max-width: 720px) {
+  .sky-top {
+    padding: 16px;
+  }
+  .sky-brand .mark {
+    font-size: 22px;
+  }
+  .sky-tag {
+    font-size: 12.5px;
+    max-width: 24ch;
+  }
+  .sky-actions {
+    gap: 8px;
+  }
+  .sky-legend {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    font-size: 12px;
+  }
+  .sky-legend span:not(.sky-hint) {
+    display: none;
+  }
+  .sky-count {
+    display: none;
+  }
+  .card {
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 60vh;
+    transform: none;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+    border-radius: 12px 12px 0 0;
+    animation-name: sheet-in;
+    animation-delay: 0.1s;
+  }
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+  }
+  .card-name {
+    font-size: 30px;
+  }
+  .card-links {
+    gap: 10px;
+  }
+  .tour-caption {
+    top: 118px;
+    bottom: auto;
+    left: 16px;
+    right: 16px;
+    max-width: none;
+  }
+  .tour-caption .op {
+    font-size: 24px;
+  }
+  .top-actions .count {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .sky-top {
+    background: linear-gradient(var(--bg) 55%, rgba(5, 7, 10, 0));
+    padding-bottom: 28px;
+  }
+  .has-card .sky-tag,
+  .is-touring .sky-tag {
+    display: none;
+  }
+  .tour-caption {
+    top: 76px;
+    padding: 10px 12px 12px;
+    background: rgba(5, 7, 10, 0.82);
+    backdrop-filter: blur(6px);
+    border-left: 1px solid var(--accent);
+  }
+}
+@media (hover: none) {
+  .chip kbd,
+  .card kbd {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .lab.is-entering,
+  .lab.is-leaving,
+  .tour-caption.pulse .op {
+    animation: none;
+  }
+  .sky {
+    transition: none;
+  }
+}

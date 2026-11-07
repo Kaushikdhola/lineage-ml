@@ -87,6 +87,14 @@ export function validateAtlas(coreExports: Record<string, unknown>): AtlasIssue[
       issues.push({ id: f.id, problem: `compute "${f.compute}" is not a function exported by src/core` });
     if (f.compute === null && !f.computeNote)
       issues.push({ id: f.id, problem: "compute is null without a note" });
+    for (const ab of f.ablations ?? []) {
+      if (!tokenKeys(f.tex).includes(ab.token))
+        issues.push({ id: f.id, problem: `ablation token "${ab.token}" is not in tex` });
+      if (ab.choices.length !== 3 || new Set(ab.choices).size !== 3)
+        issues.push({ id: f.id, problem: `ablation "${ab.token}" needs three distinct choices` });
+      if (![0, 1, 2].includes(ab.answer))
+        issues.push({ id: f.id, problem: `ablation "${ab.token}" answer must be 0, 1 or 2` });
+    }
   }
   for (const e of EDGES) {
     if (!ids.has(e.from)) issues.push({ id: e.from, problem: `edge from unknown formula` });
@@ -105,4 +113,29 @@ export function validateAtlas(coreExports: Record<string, unknown>): AtlasIssue[
     issues.push({ id: "*", problem: String(err) });
   }
   return issues;
+}
+
+/** Shortest directed path from `from` to `to` (inclusive), preferring historical edges on ties. */
+export function pathBetween(from: string, to: string): string[] | null {
+  const prev = new Map<string, string>();
+  const seen = new Set([from]);
+  const queue = [from];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    if (cur === to) {
+      const path = [to];
+      while (path[0] !== from) path.unshift(prev.get(path[0])!);
+      return path;
+    }
+    const out = childrenOf(cur).sort(
+      (a, b) => Number(b.kind === "historical") - Number(a.kind === "historical"),
+    );
+    for (const e of out)
+      if (!seen.has(e.to)) {
+        seen.add(e.to);
+        prev.set(e.to, cur);
+        queue.push(e.to);
+      }
+  }
+  return null;
 }

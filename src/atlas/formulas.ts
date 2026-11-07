@@ -197,6 +197,21 @@ export const FORMULAS: Formula[] = [
     },
     compute: "scaledDotProductAttention",
     citation: { ...VASWANI, locator: "Eq. (1)", status: "verified" },
+    ablations: [
+      {
+        token: "sqrtdk",
+        label: "Delete √d_k",
+        question:
+          "You deleted √d_k. A small attention layer with d_k = 64 now trains on a retrieval task. What happens?",
+        choices: [
+          "Nothing much: softmax only cares which score is largest, and scaling keeps the order.",
+          "Training stalls: the softmax starts saturated and the model gets stuck, even with a retuned learning rate.",
+          "Training explodes: the loss shoots to infinity or NaN.",
+        ],
+        answer: 1,
+        simulator: "sqrt-dk",
+      },
+    ],
   },
   {
     id: "causal-attention",
@@ -581,6 +596,8 @@ export const EDGES: Edge[] = [
     to: "scaled-scores",
     op: "divide by √d_k to keep unit variance",
     kind: "historical",
+    problem:
+      "For large d_k the dot products grow large in magnitude; the authors suspected this pushes softmax into regions with extremely small gradients (Vaswani et al., Section 3.2.1).",
   },
   {
     from: "scaled-scores",
