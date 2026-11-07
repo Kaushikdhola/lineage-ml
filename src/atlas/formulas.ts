@@ -92,10 +92,10 @@ export const FORMULAS: Formula[] = [
       authors: "Hinton, Vinyals, Dean",
       year: 2015,
       title: "Distilling the Knowledge in a Neural Network",
-      venue: "NeurIPS Deep Learning Workshop",
+      venue: "NIPS 2014 Deep Learning Workshop",
       url: "https://arxiv.org/abs/1503.02531",
-      locator: "Section 2 (popularized temperature in deep learning)",
-      status: "unverified",
+      locator: "Section 2, Eq. (1) (popularized temperature in deep learning)",
+      status: "verified",
     },
   },
 
@@ -125,7 +125,7 @@ export const FORMULAS: Formula[] = [
       venue: "ICLR 2015",
       url: "https://arxiv.org/abs/1409.0473",
       locator: "Section 3.1; Appendix A.1.2",
-      status: "unverified",
+      status: "verified",
     },
   },
   {
@@ -148,7 +148,7 @@ export const FORMULAS: Formula[] = [
       venue: "EMNLP",
       url: "https://arxiv.org/abs/1508.04025",
       locator: "Section 3.1 (score functions)",
-      status: "unverified",
+      status: "verified",
     },
   },
   {
@@ -179,7 +179,7 @@ export const FORMULAS: Formula[] = [
       sqrtdk: "square root of the key dimension d_k",
     },
     compute: "scaledScores",
-    citation: { ...VASWANI, locator: "Section 3.2.1", status: "unverified" },
+    citation: { ...VASWANI, locator: "Section 3.2.1", status: "verified" },
   },
   {
     id: "scaled-dot-product-attention",
@@ -196,7 +196,7 @@ export const FORMULAS: Formula[] = [
       softmax: "row-wise softmax: each query's weights sum to 1",
     },
     compute: "scaledDotProductAttention",
-    citation: { ...VASWANI, locator: "Eq. (1)", status: "unverified" },
+    citation: { ...VASWANI, locator: "Eq. (1)", status: "verified" },
   },
   {
     id: "causal-attention",
@@ -216,7 +216,7 @@ export const FORMULAS: Formula[] = [
     },
     compute: "scaledDotProductAttention",
     computeNote: "scaledDotProductAttention(Q, K, V, causalMask(n))",
-    citation: { ...VASWANI, locator: "Section 3.2.3", status: "unverified" },
+    citation: { ...VASWANI, locator: "Section 3.2.3", status: "verified" },
   },
   {
     id: "multi-head-attention",
@@ -233,7 +233,7 @@ export const FORMULAS: Formula[] = [
       Wi: "head i's learned projections (W_i^Q, W_i^K, W_i^V)",
     },
     compute: "multiHeadAttention",
-    citation: { ...VASWANI, locator: "Section 3.2.2", status: "unverified" },
+    citation: { ...VASWANI, locator: "Section 3.2.2", status: "verified" },
   },
 
   // ───────────────────────── Agents ─────────────────────────
@@ -250,7 +250,7 @@ export const FORMULAS: Formula[] = [
       r: "reward received k+1 steps after time t",
     },
     compute: "discountedReturns",
-    citation: { ...SUTTON_BARTO, locator: "Eq. (3.8)", status: "unverified" },
+    citation: { ...SUTTON_BARTO, locator: "Eq. (3.8)", status: "verified" },
   },
   {
     id: "bellman-expectation",
@@ -268,7 +268,7 @@ export const FORMULAS: Formula[] = [
     },
     compute: "policyEvaluation",
     computeNote: "iterates bellmanExpectationBackup to a fixed point",
-    citation: { ...SUTTON_BARTO, locator: "Eq. (3.14)", status: "unverified" },
+    citation: { ...SUTTON_BARTO, locator: "Eq. (3.14)", status: "verified" },
   },
   {
     id: "bellman-optimality",
@@ -356,8 +356,8 @@ export const FORMULAS: Formula[] = [
       year: 2017,
       title: "Proximal Policy Optimization Algorithms",
       url: "https://arxiv.org/abs/1707.06347",
-      locator: "Eq. (7)",
-      status: "unverified",
+      locator: "Section 3, Eq. (7)",
+      status: "verified",
     },
   },
   {
@@ -379,8 +379,8 @@ export const FORMULAS: Formula[] = [
       year: 2019,
       title: "Fine-Tuning Language Models from Human Preferences",
       url: "https://arxiv.org/abs/1909.08593",
-      locator: "Section 2",
-      status: "unverified",
+      locator: "Section 2, Eq. (2)",
+      status: "verified",
     },
   },
   {
@@ -403,8 +403,8 @@ export const FORMULAS: Formula[] = [
       title: "Direct Preference Optimization: Your Language Model is Secretly a Reward Model",
       venue: "NeurIPS",
       url: "https://arxiv.org/abs/2305.18290",
-      locator: "Eq. (7)",
-      status: "unverified",
+      locator: "Section 4, Eq. (7)",
+      status: "verified",
     },
   },
 
@@ -475,8 +475,8 @@ export const FORMULAS: Formula[] = [
       year: 2021,
       title: "Evaluating Large Language Models Trained on Code",
       url: "https://arxiv.org/abs/2107.03374",
-      locator: "Section 2.1 (unbiased estimator)",
-      status: "unverified",
+      locator: "Section 2.1, Eq. (1) (unbiased estimator)",
+      status: "verified",
     },
   },
   {
@@ -496,7 +496,8 @@ export const FORMULAS: Formula[] = [
       year: 2024,
       title: "τ-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
       url: "https://arxiv.org/abs/2406.12045",
-      status: "unverified",
+      locator: "Section 3, Pass^k metric paragraph (unnumbered display)",
+      status: "verified",
     },
   },
   {
