@@ -1,5 +1,9 @@
 # Lineage
 
+> **New: [Token X-ray](story/index.html)** (`/story/`): radiographs of real training steps, showing the
+> gradient weight every token actually received and where documents leak into each other, measured
+> through unmodified training code. Python package in [`xray/`](xray/README.md).
+
 **The family tree of AI math.** Watch the equations behind modern AI evolve into each other: from the
 dot product to multi-head attention, from the Bellman equation to DPO, from benchmark accuracy to
 pass^k.
