@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -6,7 +7,10 @@ export default defineConfig({
     sourcemap: true,
     // three.js alone is ~600 kB minified; split vendors so app code stays small and cacheable
     chunkSizeWarningLimit: 700,
-    rollupOptions: { output: { manualChunks: { three: ["three"], katex: ["katex"] } } },
+    rollupOptions: {
+      input: { main: resolve(__dirname, "index.html"), story: resolve(__dirname, "story/index.html") },
+      output: { manualChunks: { three: ["three"], katex: ["katex"] } },
+    },
   },
   test: {
     include: ["tests/**/*.test.ts"],
