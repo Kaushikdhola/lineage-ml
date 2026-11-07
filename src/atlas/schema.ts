@@ -5,7 +5,8 @@
  * morph engine tracks between formulas and what the 3D scenes bind to. Every key used in a
  * formula must be explained in that formula's `symbols` (this is the notation table).
  */
-export type Family = "foundations" | "attention" | "agents" | "evals";
+export type Family =
+  "foundations" | "optimization" | "architecture" | "attention" | "generative" | "agents" | "evals";
 
 export interface Citation {
   authors: string;
@@ -47,7 +48,10 @@ export interface Edge {
 
 export const FAMILY_LABEL: Record<Family, string> = {
   foundations: "Foundations",
+  optimization: "Optimization",
+  architecture: "Architecture",
   attention: "Attention",
+  generative: "Generative",
   agents: "Agents",
   evals: "Evals",
 };
