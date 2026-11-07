@@ -6,3 +6,5 @@ export * from "./rl";
 export * from "./evals";
 export * from "./random";
 export { normalCdf, normalQuantile, normalSf } from "./normal";
+export * from "./stats";
+export * from "./retrieval";

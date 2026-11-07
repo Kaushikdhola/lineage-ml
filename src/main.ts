@@ -1,174 +1,200 @@
 import "katex/dist/katex.min.css";
 import "./ui/styles.css";
-import { EDGES, FORMULAS } from "./atlas/formulas";
-import { childrenOf, getFormula, lineagePath, parentsOf, tokenKeys, topologicalOrder } from "./atlas/graph";
-import { FAMILY_LABEL, type Family, type Formula } from "./atlas/schema";
-import { FormulaStage } from "./math/morph";
-import { applyFocus, SymbolBus } from "./math/symbols";
-import { PROBES } from "./ui/probes";
+import "./ui/sky.css";
+import "./ui/ablation.css";
+import { FORMULAS } from "./atlas/formulas";
+import { prefersReducedMotion } from "./ui/dom";
+import { createLab } from "./ui/lab";
+import { SearchPalette } from "./ui/search";
+import type { SkyView } from "./ui/skyView";
 
-const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
-const esc = (s: string) =>
-  s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+/**
+ * Router: two views, one page. The sky (home) and the lab (?f=<id>). Moving between them is a
+ * continuous transition: the card's formula lifts into the lab's stage, and back.
+ */
+const app = document.querySelector<HTMLElement>("#app")!;
+const labEl = document.createElement("div");
+labEl.hidden = true;
+app.append(labEl);
 
-document.querySelector("#app")!.innerHTML = `
-  <header class="top">
-    <div class="brand"><span class="mark">LINEAGE</span><span class="tag">The family tree of AI math · every formula computed, not drawn</span></div>
-    <div class="count">${FORMULAS.length} formulas · ${EDGES.length} lineage edges</div>
-  </header>
-  <nav class="rail" aria-label="Atlas"></nav>
-  <main class="center">
-    <ol class="path" aria-label="Lineage"></ol>
-    <div class="eyebrow"></div>
-    <h1 class="title"></h1>
-    <div class="arrival" aria-live="polite"></div>
-    <div class="stage" id="stage"></div>
-    <p class="idea"></p>
-    <section class="moves">
-      <div class="from"></div>
-      <div class="to"></div>
-    </section>
-    <section class="notation" aria-label="Notation"></section>
-    <footer class="cite"></footer>
-  </main>
-  <aside class="probe-panel" aria-label="Live computation">
-    <div class="probe-head"><span>Live</span><code class="compute"></code></div>
-    <div class="probe"></div>
-  </aside>`;
+type ViewName = "sky" | "lab";
+let view: ViewName = "sky";
+let sky: SkyView | null = null;
+let transitioning = false;
+const search = new SearchPalette();
+void Promise.all(
+  ["20px KaTeX_Main", "italic 20px KaTeX_Math", "20px KaTeX_Size1", "20px KaTeX_Size2"].map((f) =>
+    document.fonts?.load(f).catch(() => undefined),
+  ),
+);
+const known = (id: string | null): id is string => !!id && FORMULAS.some((f) => f.id === id);
 
-const bus = new SymbolBus();
-const stage = new FormulaStage($("#stage"), bus);
-let current: Formula | null = null;
-let disposeProbe: (() => void) | null = null;
-
-// rail, grouped by family in topological order
-const order = topologicalOrder();
-const families = Object.keys(FAMILY_LABEL) as Family[];
-$(".rail").innerHTML = families
-  .filter((fam) => FORMULAS.some((f) => f.family === fam))
-  .map(
-    (fam) =>
-      `<section><h2>${FAMILY_LABEL[fam]}</h2><ul>${order
-        .map(getFormula)
-        .filter((f) => f.family === fam)
-        .map(
-          (f) =>
-            `<li><button data-id="${f.id}">${esc(f.name)}${f.hub ? '<span class="hub">hub</span>' : ""}</button></li>`,
-        )
-        .join("")}</ul></section>`,
-  )
-  .join("");
-$(".rail").addEventListener("click", (e) => {
-  const id = (e.target as HTMLElement).closest<HTMLElement>("[data-id]")?.dataset.id;
-  if (id) go(id);
+const lab = createLab(labEl, {
+  navigate: (id) => {
+    if (view === "lab")
+      history.replaceState({ view: "lab", fromSky: history.state?.fromSky ?? false }, "", `?f=${id}`);
+  },
+  back: () => {
+    if (history.state?.fromSky) history.back();
+    else void toSky(true);
+  },
+  search: openSearch,
+  ablation: (id, token) => {
+    if (view !== "lab") return;
+    history.replaceState(history.state, "", `?f=${id}${token ? `&ablate=${encodeURIComponent(token)}` : ""}`);
+  },
 });
 
-// notation + moves + path are all clickable/hoverable
-document.addEventListener("click", (e) => {
-  const id = (e.target as HTMLElement).closest<HTMLElement>("[data-go]")?.dataset.go;
-  if (id) go(id);
-});
-$(".notation").addEventListener("pointerover", (e) => {
-  const sym = (e.target as HTMLElement).closest<HTMLElement>("[data-sym]")?.dataset.sym;
-  bus.focus(sym ?? null, "notation");
-});
-$(".notation").addEventListener("pointerleave", () => bus.focus(null, "notation"));
-bus.onFocus((key) => {
-  applyFocus($(".notation"), key);
-  applyFocus($(".probe"), key);
-});
-
-document.addEventListener("keydown", (e) => {
-  if (!current || (e.target as HTMLElement).closest("input")) return;
-  if (e.key === "ArrowRight") {
-    const c = childrenOf(current.id);
-    const next = c.find((x) => x.kind === "historical") ?? c[0];
-    if (next) go(next.to);
+async function ensureSky(): Promise<SkyView> {
+  if (!sky) {
+    const { SkyView } = await import("./ui/skyView");
+    sky = new SkyView(app, { open: (id, from) => void toLab(id, from, true), search: openSearch });
+    sky.root.hidden = true;
+    (window as unknown as { __lineage: unknown }).__lineage = { sky };
   }
-  if (e.key === "ArrowLeft") {
-    const p = parentsOf(current.id);
-    const prev = p.find((x) => x.kind === "historical") ?? p[0];
-    if (prev) go(prev.from);
-  }
-});
-
-function go(id: string): void {
-  const f = getFormula(id);
-  if (current?.id === id) return;
-  const via = current ? EDGES.find((e) => e.from === current!.id && e.to === id) : undefined;
-  const back = current ? EDGES.find((e) => e.to === current!.id && e.from === id) : undefined;
-  const firstRender = !current;
-  current = f;
-  history.replaceState(null, "", `?f=${id}`);
-
-  if (firstRender) stage.show(f.tex);
-  else void stage.morphTo(f.tex);
-
-  const arrival = $(".arrival");
-  arrival.innerHTML = via
-    ? `<span class="op">${esc(via.op)}</span><span class="kind ${via.kind}">${via.kind}</span>`
-    : back
-      ? `<span class="op back">back to the parent</span>`
-      : "";
-  arrival.classList.remove("show");
-  void arrival.offsetWidth;
-  if (via || back) arrival.classList.add("show");
-
-  $(".eyebrow").textContent = `${FAMILY_LABEL[f.family]}${f.hub ? " · hub" : ""}`;
-  $(".title").textContent = f.name;
-  $(".idea").textContent = f.idea;
-
-  const path = lineagePath(id);
-  $(".path").innerHTML = path
-    .map(
-      (pid) =>
-        `<li><button data-go="${pid}" class="${pid === id ? "here" : ""}">${esc(getFormula(pid).name)}</button></li>`,
-    )
-    .join("");
-
-  const parents = parentsOf(id);
-  const kids = childrenOf(id);
-  $(".moves .from").innerHTML = parents.length
-    ? `<h3>Comes from</h3>${parents.map((e) => `<button data-go="${e.from}"><b>${esc(getFormula(e.from).name)}</b><span>${esc(e.op)}</span></button>`).join("")}`
-    : `<h3>Comes from</h3><p class="muted">A root of the atlas.</p>`;
-  $(".moves .to").innerHTML = kids.length
-    ? `<h3>Evolves into</h3>${kids.map((e) => `<button data-go="${e.to}"><b>${esc(getFormula(e.to).name)}</b><span>${esc(e.op)}</span></button>`).join("")}`
-    : `<h3>Evolves into</h3><p class="muted">A frontier, for now.</p>`;
-
-  // notation rows reuse the rendered glyphs from the stage
-  requestAnimationFrame(() => {
-    const keys = [...new Set(tokenKeys(f.tex))];
-    $(".notation").innerHTML = `<h3>Notation</h3>${keys
-      .map((k) => {
-        const glyph = $("#stage").querySelector<HTMLElement>(`.formula-layer:last-child [data-tok="${k}"]`);
-        return `<div class="sym" data-sym="${k}"><span class="glyph katex">${glyph ? glyph.innerHTML : esc(k)}</span><span>${esc(f.symbols[k])}</span></div>`;
-      })
-      .join("")}`;
-  });
-
-  const c = f.citation;
-  $(".cite").innerHTML = c
-    ? `<span class="badge ${c.status}">${c.status === "verified" ? "source verified" : "source check pending"}</span>
-       ${esc(c.authors)} (${c.year}). ${c.url ? `<a href="${c.url}" target="_blank" rel="noopener">${esc(c.title)}</a>` : esc(c.title)}${c.venue ? `. ${esc(c.venue)}` : ""}${c.locator ? ` · ${esc(c.locator)}` : ""}`
-    : `<span class="muted">Classical result; no single origin cited.</span>`;
-
-  document
-    .querySelectorAll(".rail button")
-    .forEach((b) => b.classList.toggle("here", (b as HTMLElement).dataset.id === id));
-
-  disposeProbe?.();
-  disposeProbe = null;
-  $(".compute").textContent = f.compute ? `core.${f.compute}()` : "no computation";
-  const probe = PROBES[id];
-  const panel = $(".probe");
-  if (probe) disposeProbe = probe(panel, bus);
-  else
-    panel.innerHTML = `<p class="probe-note">${
-      f.compute
-        ? `Computed by <code>core.${f.compute}()</code> and verified against the NumPy/SciPy oracle. ${f.computeNote ? esc(f.computeNote) + ". " : ""}An interactive instrument for this formula arrives with its scene.`
-        : esc(f.computeNote ?? "")
-    }</p>`;
+  return sky;
 }
 
-const start = new URLSearchParams(location.search).get("f");
-go(start && FORMULAS.some((f) => f.id === start) ? start : "softmax");
+function openSearch(): void {
+  search.open((id) => {
+    if (view === "lab") lab.go(id);
+    else void sky?.select(id);
+  });
+}
+
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    openSearch();
+  } else if (e.key === "/" && !(e.target as HTMLElement).closest("input, textarea") && !search.isOpen) {
+    e.preventDefault();
+    openSearch();
+  }
+});
+
+/** A fixed-position copy of a rendered formula that flies between two places. */
+function flyFormula(from: Element, to: Element, duration: number): Promise<void> {
+  const a = from.getBoundingClientRect();
+  const b = to.getBoundingClientRect();
+  const offscreen = b.bottom < 0 || b.top > innerHeight || a.bottom < 0 || a.top > innerHeight;
+  if (prefersReducedMotion() || !a.width || !b.width || offscreen) return Promise.resolve();
+  const ghost = document.createElement("div");
+  ghost.className = "lift-ghost";
+  const copy = from.cloneNode(true) as HTMLElement;
+  copy.style.visibility = "visible";
+  ghost.append(copy);
+  Object.assign(ghost.style, {
+    left: `${a.left}px`,
+    top: `${a.top}px`,
+    // .katex sets its own 1.21em, so the ghost takes the size of the element around it
+    fontSize: getComputedStyle(from.parentElement ?? from).fontSize,
+  });
+  document.body.append(ghost);
+  const k = b.width / a.width;
+  const anim = ghost.animate(
+    [
+      { transform: "translate(0, 0) scale(1)" },
+      { transform: `translate(${b.left - a.left}px, ${b.top - a.top}px) scale(${k})` },
+    ],
+    { duration, easing: "cubic-bezier(0.65, 0, 0.35, 1)", fill: "forwards" },
+  );
+  return anim.finished.then(
+    () => ghost.remove(),
+    () => ghost.remove(),
+  );
+}
+
+const katexOf = (el: Element | null) => el?.querySelector(".katex") ?? null;
+
+/** Sky → lab: the card's formula lifts off into the lab's stage. */
+async function toLab(id: string, from: HTMLElement | null, push: boolean): Promise<void> {
+  if (transitioning) return;
+  transitioning = true;
+  if (push) history.pushState({ view: "lab", fromSky: true }, "", `?f=${id}`);
+  view = "lab";
+  document.body.classList.remove("in-sky");
+  lab.reset();
+  labEl.hidden = false;
+  window.scrollTo(0, 0);
+  lab.go(id);
+  lab.setActive(true);
+
+  const target = katexOf(lab.stageEl.querySelector(".formula-layer"));
+  const source = katexOf(from);
+  if (sky && !sky.root.hidden && source && target) {
+    labEl.classList.add("is-entering");
+    sky.root.classList.add("is-leaving");
+    (target as HTMLElement).style.visibility = "hidden";
+    (source as HTMLElement).style.visibility = "hidden";
+    await flyFormula(source, target, 950);
+    (target as HTMLElement).style.visibility = "";
+    (source as HTMLElement).style.visibility = "";
+  }
+  sky?.hide();
+  sky?.root.classList.remove("is-leaving");
+  labEl.classList.remove("is-entering");
+  transitioning = false;
+}
+
+/** Lab → sky: the stage's formula drops back into the card, at its star. */
+async function toSky(replace: boolean): Promise<void> {
+  if (transitioning) return;
+  transitioning = true;
+  const id = lab.current();
+  const s = await ensureSky();
+  if (replace) history.replaceState({ view: "sky" }, "", location.pathname);
+  view = "sky";
+  lab.setActive(false);
+  document.body.classList.add("in-sky");
+  s.root.classList.add("is-arriving");
+  s.show();
+  if (id) s.arrive(id);
+  else void s.deselect();
+
+  const source = katexOf(lab.stageEl.querySelector(".formula-layer:last-child"));
+  const target = katexOf(s.cardFormula());
+  requestAnimationFrame(() => s.root.classList.remove("is-arriving"));
+  if (source && target) {
+    labEl.classList.add("is-leaving");
+    (target as HTMLElement).style.visibility = "hidden";
+    (source as HTMLElement).style.visibility = "hidden";
+    await flyFormula(source, target, 850);
+    (target as HTMLElement).style.visibility = "";
+    (source as HTMLElement).style.visibility = "";
+  }
+  labEl.hidden = true;
+  labEl.classList.remove("is-leaving");
+  lab.reset();
+  transitioning = false;
+}
+
+window.addEventListener("popstate", () => {
+  const id = new URLSearchParams(location.search).get("f");
+  if (known(id) && view === "sky") void toLab(id, sky?.cardFormula() ?? null, false);
+  else if (known(id)) lab.go(id);
+  else if (view === "lab") void toSky(false);
+});
+
+async function boot(): Promise<void> {
+  const params = new URLSearchParams(location.search);
+  const id = params.get("f");
+  if (known(id)) {
+    view = "lab";
+    history.replaceState({ view: "lab", fromSky: false }, "", `?f=${id}`);
+    labEl.hidden = false;
+    lab.go(id);
+    lab.setActive(true);
+    const token = params.get("ablate");
+    if (token) lab.ablate(token);
+    return;
+  }
+  const s = await ensureSky();
+  view = "sky";
+  document.body.classList.add("in-sky");
+  history.replaceState({ view: "sky" }, "", location.pathname + (params.has("tour") ? "?tour=1" : ""));
+  s.show();
+  s.intro();
+  if (params.has("tour")) setTimeout(() => void s.startTour(), prefersReducedMotion() ? 300 : 3400);
+}
+
+void boot();

@@ -251,6 +251,130 @@ def normal_cases():
     return {"z": zs, "cdf": stats.norm.cdf(zs), "p": ps, "ppf": stats.norm.ppf(ps)}
 
 
+def t_quantile(p, df):
+    """scipy.stats.t.ppf polished by Newton steps on scipy's CDF.
+
+    t.ppf alone is off by ~1e-11 relative at df = 1 (e.g. ppf(0.9, 1) vs the exact tan(0.4π)),
+    which is less accurate than the TS implementation it is meant to check.
+    """
+    q = stats.t.ppf(p, df)
+    for _ in range(3):
+        q -= (stats.t.cdf(q, df) - p) / stats.t.pdf(q, df)
+    return q
+
+
+def stats_cases():
+    """Student-t quantiles/CDF, log-gamma, incomplete beta and mean CIs, from SciPy."""
+    out = {"tq": [], "tcdf": [], "lgamma": [], "betainc": [], "meanci": []}
+    assert abs(t_quantile(0.9, 1) - np.tan(0.4 * np.pi)) < 1e-15 * 4
+    for df in [1, 2, 3, 5, 10, 19, 30, 100]:
+        for p in [0.6, 0.9, 0.95, 0.975, 0.995, 0.025]:
+            out["tq"].append({"p": p, "df": df, "q": t_quantile(p, df)})
+        for t in [-4.0, -1.3, 0.0, 0.7, 2.093, 6.0]:
+            out["tcdf"].append({"t": t, "df": df, "cdf": stats.t.cdf(t, df)})
+    for x in [0.1, 0.5, 1.0, 2.5, 9.5, 50.0, 171.3]:
+        out["lgamma"].append({"x": x, "v": special.gammaln(x)})
+    for x, a, b in [(0.2, 0.5, 9.5), (0.7, 2.0, 3.0), (0.99, 10.0, 0.5), (0.5, 50.0, 0.5), (0.01, 1.5, 1.5)]:
+        out["betainc"].append({"x": x, "a": a, "b": b, "v": special.betainc(a, b, x)})
+    for n in [2, 5, 20]:
+        xs = rng.lognormal(0, 1, n)
+        half = t_quantile(0.975, n - 1) * stats.sem(xs)
+        lo, hi = xs.mean() - half, xs.mean() + half
+        out["meanci"].append({"xs": xs, "mean": xs.mean(), "sd": xs.std(ddof=1), "lo": lo, "hi": hi})
+    return out
+
+
+# --- retrieval training (src/core/retrieval.ts) ---------------------------------------------
+
+def mulberry32(seed):
+    """Bit-exact port of src/core/random.ts (unsigned 32-bit arithmetic)."""
+    M = 0xFFFFFFFF
+    state = [seed & M]
+
+    def imul(a, b):
+        return (a * b) & M
+
+    def nxt():
+        state[0] = (state[0] + 0x6D2B79F5) & M
+        t = state[0]
+        t = imul(t ^ (t >> 15), t | 1)
+        t ^= (t + imul(t ^ (t >> 7), t | 61)) & M
+        return ((t ^ (t >> 14)) & M) / 4294967296
+
+    return nxt
+
+
+def gaussian(rng):
+    def g():
+        u = 0.0
+        while u == 0.0:
+            u = rng()
+        return np.sqrt(-2 * np.log(u)) * np.cos(2 * np.pi * rng())
+
+    return g
+
+
+def retrieval_forward(W, K, V, X, targets, scale):
+    """Vectorised NumPy forward pass: loss, attention weights."""
+    S = scale * (X @ W.T) @ K.T
+    A = special.softmax(S, axis=1)
+    R = A @ V - V[targets]
+    return 0.5 * (R ** 2).sum(1).mean(), A
+
+
+def retrieval_cases():
+    out = {}
+    # 1. one step on a small random instance: loss and diagnostics directly, gradient by central
+    #    finite differences (an independent method from the hand-derived backprop in TS)
+    d, n, dv, B = 6, 5, 4, 3
+    K, V = rng.normal(size=(n, d)), rng.normal(size=(n, dv))
+    W, X = rng.normal(size=(d, d)) / np.sqrt(d), rng.normal(size=(B, d))
+    targets = rng.integers(0, n, B)
+    steps = []
+    for scale in [1 / np.sqrt(d), 1.0, 3.0]:
+        loss, A = retrieval_forward(W, K, V, X, targets, scale)
+        h = 1e-6
+        grad = np.zeros_like(W)
+        for i in range(d):
+            for j in range(d):
+                Wp, Wm = W.copy(), W.copy()
+                Wp[i, j] += h
+                Wm[i, j] -= h
+                grad[i, j] = (retrieval_forward(Wp, K, V, X, targets, scale)[0]
+                              - retrieval_forward(Wm, K, V, X, targets, scale)[0]) / (2 * h)
+        ent = np.mean([stats.entropy(a) for a in A])
+        jac = np.mean([np.linalg.norm(np.diag(a) - np.outer(a, a), "fro") for a in A])
+        steps.append({"scale": scale, "loss": loss, "gradFD": grad.ravel(), "entropy": ent, "jacobianNorm": jac})
+    out["step"] = {"W": W.ravel(), "K": K, "V": V, "X": X, "targets": targets, "cases": steps}
+
+    # 2. whole seeded runs, reproduced from the same PRNG: checks data order, init and SGD plumbing
+    cfg = {"dk": 16, "nKeys": 8, "dv": 8, "batch": 4, "steps": 40, "noise": 0.5}
+    runs = []
+    for seed, scale, lr in [(0, 1 / 4, 0.3), (3, 1.0, 0.01), (7, 1 / 4, 0.05)]:
+        r = mulberry32(seed)
+        g = gaussian(r)
+        Kr = np.array([[g() for _ in range(cfg["dk"])] for _ in range(cfg["nKeys"])])
+        Vr = np.array([[g() for _ in range(cfg["dv"])] for _ in range(cfg["nKeys"])])
+        Wr = np.array([g() / np.sqrt(cfg["dk"]) for _ in range(cfg["dk"] ** 2)]).reshape(cfg["dk"], cfg["dk"])
+        losses = []
+        for _ in range(cfg["steps"]):
+            gb = gaussian(r)
+            tg, Xb = [], []
+            for _ in range(cfg["batch"]):
+                t = int(np.floor(r() * cfg["nKeys"]))
+                tg.append(t)
+                Xb.append([Kr[t, i] + cfg["noise"] * gb() for i in range(cfg["dk"])])
+            Xb, tg = np.array(Xb), np.array(tg)
+            loss, A = retrieval_forward(Wr, Kr, Vr, Xb, tg, scale)
+            losses.append(loss)
+            G = (A @ Vr - Vr[tg]) @ Vr.T
+            dS = A * (G - (A * G).sum(1, keepdims=True))
+            Wr = Wr - lr * (scale * dS @ Kr).T @ Xb / cfg["batch"]
+        runs.append({"seed": seed, "scale": scale, "lr": lr, "loss": losses})
+    out["runs"] = {"cfg": cfg, "cases": runs}
+    return out
+
+
 if __name__ == "__main__":
     print("oracle: computing reference values")
     data = {
@@ -261,6 +385,8 @@ if __name__ == "__main__":
         "rl": rl_cases(),
         "evals": evals_cases(),
         "normal": normal_cases(),
+        "stats": stats_cases(),
+        "retrieval": retrieval_cases(),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(enc(data)))
