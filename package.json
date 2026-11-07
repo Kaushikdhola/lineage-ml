@@ -33,7 +33,7 @@
     "@types/katex": "^0.16.7",
     "@types/node": "^22.10.0",
     "@types/three": "^0.170.0",
-    "eslint": "^9.15.0",
+    "eslint": "^10.14.0",
     "globals": "^15.12.0",
     "prettier": "^3.4.0",
     "tsx": "^4.19.0",
