@@ -5,10 +5,15 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = resolve(import.meta.dirname, "..");
+const root = fileURLToPath(new URL("..", import.meta.url));
 const venv = process.platform === "win32" ? ".venv/Scripts/python.exe" : ".venv/bin/python";
-const py = existsSync(resolve(root, venv)) ? resolve(root, venv) : process.platform === "win32" ? "python" : "python3";
+const py = existsSync(resolve(root, venv))
+  ? resolve(root, venv)
+  : process.platform === "win32"
+    ? "python"
+    : "python3";
 const tasks = {
   test: ["-m", "pytest", "-q"],
   report: ["-m", "token_xray.cli", "report"],

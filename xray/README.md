@@ -23,7 +23,7 @@ print(report.table())
 
 A tiny LLaMA "probe" gives every token in the batch a unique id. In aggregation mode the attention
 output is zeroed and frozen, so a position's loss depends only on its own embedding. The gradient the
-stack produces at token *i* is then `w_i · r_i`, where `r_i` is the token's unit-weight gradient
+stack produces at token _i_ is then `w_i · r_i`, where `r_i` is the token's unit-weight gradient
 (computed on an identical probe), and the readout recovers:
 
 - `w_i = ⟨g_i, r_i⟩ / ‖r_i‖²` — the weight the stack applied (×N, so a global token mean is 1.0)
@@ -34,20 +34,20 @@ gradient reaching another sequence is a leak. On a correct stack it is exactly z
 
 ## What is checked today
 
-| Check | Runs | Result (transformers 5.22.2, torch 2.15) |
-| --- | --- | --- |
-| Gradient accumulation 1×8 vs 4×2 | real `Trainer` | matches the token mean (≤1e-7) |
-| Sample order (shuffled) | real `Trainer` | invariant |
-| Logged loss equals the objective | real `Trainer` | equal |
-| Left vs right padding | real `Trainer` | **differs**: with labels = input ids, the pad before each left-padded sequence predicts its first token, adding a target (labelling convention, not a library bug) |
-| Label smoothing | real `Trainer` | flagged: cosine < 1 (declared configuration) |
-| Mean of micro-batch means | emulation | detected; matches closed form |
-| Later micro-batches dropped | emulation | detected; matches closed form |
-| pad = EOS label masking | emulation | detected: EOS targets get zero weight |
-| Padded rows | real model | no leak |
-| Packed, no boundaries | real model | leaks (later documents into earlier) |
-| Packed, `position_ids` reset, `use_cache=False` | real model | no leak |
-| Packed, `position_ids` reset, default `use_cache` | real model | **leaks**, no warning — candidate finding, see below |
+| Check                                             | Runs           | Result (transformers 5.22.2, torch 2.15)                                                                                                                           |
+| ------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Gradient accumulation 1×8 vs 4×2                  | real `Trainer` | matches the token mean (≤1e-7)                                                                                                                                     |
+| Sample order (shuffled)                           | real `Trainer` | invariant                                                                                                                                                          |
+| Logged loss equals the objective                  | real `Trainer` | equal                                                                                                                                                              |
+| Left vs right padding                             | real `Trainer` | **differs**: with labels = input ids, the pad before each left-padded sequence predicts its first token, adding a target (labelling convention, not a library bug) |
+| Label smoothing                                   | real `Trainer` | flagged: cosine < 1 (declared configuration)                                                                                                                       |
+| Mean of micro-batch means                         | emulation      | detected; matches closed form                                                                                                                                      |
+| Later micro-batches dropped                       | emulation      | detected; matches closed form                                                                                                                                      |
+| pad = EOS label masking                           | emulation      | detected: EOS targets get zero weight                                                                                                                              |
+| Padded rows                                       | real model     | no leak                                                                                                                                                            |
+| Packed, no boundaries                             | real model     | leaks (later documents into earlier)                                                                                                                               |
+| Packed, `position_ids` reset, `use_cache=False`   | real model     | no leak                                                                                                                                                            |
+| Packed, `position_ids` reset, default `use_cache` | real model     | **leaks**, no warning — candidate finding, see below                                                                                                               |
 
 **Emulations** reproduce the documented mechanism of a historical bug in plain PyTorch. They are always
 labelled and never presented as the library itself.

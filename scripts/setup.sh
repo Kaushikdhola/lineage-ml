@@ -39,5 +39,10 @@ fetch_skills cloudai-x/threejs-skills skills threejs-fundamentals threejs-geomet
 echo "→ 4/4  Verifying the engine against the oracle"
 npm run verify
 
+echo "→ token-xray: CPU PyTorch, transformers and TRL in .venv (a few minutes the first time)"
+.venv/bin/pip install -q torch --index-url https://download.pytorch.org/whl/cpu
+.venv/bin/pip install -q -e "xray[dev,trl]"
+node scripts/xray.mjs test
+
 echo ""
 echo "✓ Ready. Run: npm run dev"

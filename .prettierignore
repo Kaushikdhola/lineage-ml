@@ -4,3 +4,6 @@ node_modules
 tests/fixtures
 package-lock.json
 .wrangler
+public/xray
+**/.pytest_cache
+**/__pycache__

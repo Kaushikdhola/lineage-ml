@@ -1,0 +1,44 @@
+name: token-xray
+
+# Runs the measurement suite against the real libraries on CPU, and re-exports the site's
+# measurements nightly so the films always state the versions they were measured on.
+
+on:
+  push:
+    branches: [main]
+    paths: ["xray/**", ".github/workflows/xray.yml"]
+  pull_request:
+    paths: ["xray/**"]
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install CPU PyTorch and the package
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e "xray[dev]"
+      - name: Test (every check must pass on correct code and fail on the bug it claims to catch)
+        working-directory: xray
+        run: pytest -q
+      - name: Report against the latest releases
+        working-directory: xray
+        run: token-xray report
+      - name: Export measurements
+        working-directory: xray
+        run: token-xray export ../xray-data.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xray-data
+          path: xray-data.json

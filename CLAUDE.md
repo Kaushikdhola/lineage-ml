@@ -47,3 +47,20 @@ Current UI is the **lab**: functional, verified, deliberately plain. The product
 
 - `npm run dev` · `npm run verify` · `npm run atlas:check` · `npm run ci` · `npm run deploy`
 - Slash commands: `/formula`, `/verify-citations`, `/scene`, `/sky`, `/qa`, `/redteam`, `/ship`
+
+## Current priority: Token X-ray (read before any other work)
+
+The launch is **Token X-ray** (`/story/` page + `xray/` Python package): radiographs of real training
+steps showing the gradient weight every token actually received, and cross-document gradient leaks.
+Plan: `docs/PLAN.md`. Design system: `docs/DESIGN.md` (follow it exactly). Deploy: `docs/DEPLOY.md`.
+
+- Measurements come only from `xray/` and are exported to `public/xray/data.json` (`node scripts/xray.mjs export`).
+  The story never invents a number.
+- Every film says whether it is a Real run, an Emulation of a documented mechanism, or Computed from
+  `src/core`. Emulations are never described as a library's behaviour.
+- The `use_cache` packing behaviour is a candidate finding until transformers maintainers confirm it.
+- Every new check passes on correct code and must be shown to fail on an injected fault.
+- `npm run ci` and `node scripts/xray.mjs test` pass before every commit.
+- Ablation mode and the Break/Fix puzzle are paused (`wip/ablation` branch). Do not resume them.
+- Commands for the sprint: `/xray-trl`, `/xray-ddp`, `/report-finding`, `/story-polish`, `/qa`,
+  `/redteam-xray`, `/launch`.
