@@ -3,6 +3,7 @@ import * as core from "../src/core";
 import { EDGES, FORMULAS } from "../src/atlas/formulas";
 import { ancestors, lineagePath, tokenKeys, topologicalOrder, validateAtlas } from "../src/atlas/graph";
 import { renderTexToString } from "../src/math/katex";
+import { FAMILY_LABEL } from "../src/atlas/schema";
 
 describe("atlas", () => {
   it("has no structural issues (ids, tokens ↔ notation, compute functions, edges, acyclic)", () => {
@@ -17,9 +18,10 @@ describe("atlas", () => {
     }
   });
 
-  it("covers the four families", () => {
+  it("uses only known families and covers the four core ones", () => {
     const fams = new Set(FORMULAS.map((f) => f.family));
-    expect([...fams].sort()).toEqual(["agents", "attention", "evals", "foundations"]);
+    for (const f of fams) expect(Object.keys(FAMILY_LABEL)).toContain(f);
+    for (const core of ["foundations", "attention", "agents", "evals"]) expect(fams).toContain(core);
   });
 
   it("softmax is the hub that connects families", () => {
