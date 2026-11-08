@@ -4,6 +4,7 @@ import { FAMILY_LABEL, type Family, type Formula } from "../atlas/schema";
 import { FormulaStage } from "../math/morph";
 import { applyFocus, SymbolBus } from "../math/symbols";
 import { mountAblation, type AblationController } from "./ablation";
+import { FLAGS } from "./flags";
 import { PROBES } from "./probes";
 import { esc } from "./dom";
 
@@ -137,9 +138,12 @@ export function createLab(root: HTMLElement, hooks: LabHooks): Lab {
       rendered = Promise.resolve();
     } else rendered = stage.morphTo(f.tex);
     ablation?.dispose();
-    ablation = mountAblation(stage, stageEl, $(".ablate"), f, rendered, {
-      state: (token) => hooks.ablation(id, token),
-    });
+    // behind ?ablation=1: when off, nothing is marked, hinted or bound
+    if (FLAGS.ablation)
+      ablation = mountAblation(stage, stageEl, $(".ablate"), f, rendered, {
+        state: (token) => hooks.ablation(id, token),
+      });
+    else ablation = null;
 
     const arrival = $(".arrival");
     arrival.innerHTML = via
