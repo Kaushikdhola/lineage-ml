@@ -47,18 +47,23 @@ gradient reaching another sequence is a leak. On a correct stack it is exactly z
 | Padded rows                                       | real model     | no leak                                                                                                                                                            |
 | Packed, no boundaries                             | real model     | leaks (later documents into earlier)                                                                                                                               |
 | Packed, `position_ids` reset, `use_cache=False`   | real model     | no leak                                                                                                                                                            |
-| Packed, `position_ids` reset, default `use_cache` | real model     | **leaks**, no warning — candidate finding, see below                                                                                                               |
+| Packed, `position_ids` reset, default `use_cache` | real model     | **leaks**, no warning — known issue, see below                                                                                                                     |
 
 **Emulations** reproduce the documented mechanism of a historical bug in plain PyTorch. They are always
 labelled and never presented as the library itself.
 
-### Candidate finding: packed sequences and `use_cache`
+### Known issue: packed sequences and `use_cache`
 
 transformers detects packed sequences from `position_ids` only when no cache object exists. Most model
 configs default to `use_cache=True`, which creates a cache even in training mode, so a hand-written loop
 that feeds packed `position_ids` without `use_cache=False` attends across documents silently. The
-`Trainer` is not affected: it sets `model.config.use_cache` from `TrainingArguments.use_cache`. This
-needs confirmation from the maintainers before it is described as a bug.
+`Trainer` is not affected: it sets `model.config.use_cache` from `TrainingArguments.use_cache`.
+
+This is already reported in [transformers#50419](https://github.com/huggingface/transformers/issues/50419).
+A maintainer replied that a cache should not be used during training and suggested documenting that
+requirement; fixes are proposed in [#50190](https://github.com/huggingface/transformers/pull/50190) and
+[#50421](https://github.com/huggingface/transformers/pull/50421). Until one lands, pass `use_cache=False`
+when you train on packed sequences. Reproduction: [`repro/packed_position_ids_use_cache.py`](repro/packed_position_ids_use_cache.py).
 
 ## Precision
 

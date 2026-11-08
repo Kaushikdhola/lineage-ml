@@ -12,7 +12,7 @@ description: Final checks, deploy, publish the package, and draft the launch pos
 4. **Posts** (drafts only, I post them):
    - Reddit r/MachineLearning: title starts with `[P]`, plain and specific, no hype; body explains the
      method in 4 sentences, links the story, the repo and the package, and clearly separates real runs,
-     emulations and the candidate finding. Check the subreddit's current rules first.
+     emulations and the known issue (huggingface/transformers#50419). Check the subreddit's current rules first.
    - X thread: 5 posts, the hero film image first, one claim per post, link last.
    - LinkedIn: hook first, under 1,300 characters, a 30–40 second screen recording of the hero flicker,
      the accumulation scrolly and the GRPO morph; link in the first comment.

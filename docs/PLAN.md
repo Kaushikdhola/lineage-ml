@@ -32,6 +32,6 @@ closed forms and says so on the film).
 
 ## Before posting anywhere
 
-- The maintainers have the `use_cache` report, or the page calls it a candidate finding (it does).
+- The `use_cache` behaviour is described as a known issue (huggingface/transformers#50419) and linked (it is).
 - Every film edge says Real run, Emulation, or Computed.
 - `npm run ci`, `node scripts/xray.mjs test` and `token-xray report` are green on the deployed commit.

@@ -94,7 +94,7 @@ def leak_panels(lengths=LEAK_LENGTHS) -> list[dict]:
          "transformers detects packed sequences from position_ids. Zero leak. The Trainer sets use_cache from TrainingArguments, so this is what it runs."),
         (None, "Packed, position_ids reset, model default use_cache",
          "In a hand-written loop with the model's default use_cache=True, a cache object is created and packed-sequence "
-         "detection is skipped: documents attend to each other with no warning. Candidate finding, pending maintainer review."),
+         "detection is skipped: documents attend to each other with no warning. Known issue, reported in transformers#50419."),
     ]:
         M = custom_loop_leak(b, uc)
         out.append({"id": f"packed_pos_cache_{uc}", "title": title, "kind": "real", "note": note, "matrix": M.round(6).tolist(), "maxLeak": max_leak(M)})

@@ -58,7 +58,7 @@ Plan: `docs/PLAN.md`. Design system: `docs/DESIGN.md` (follow it exactly). Deplo
   The story never invents a number.
 - Every film says whether it is a Real run, an Emulation of a documented mechanism, or Computed from
   `src/core`. Emulations are never described as a library's behaviour.
-- The `use_cache` packing behaviour is a candidate finding until transformers maintainers confirm it.
+- The `use_cache` packing behaviour is a known issue (huggingface/transformers#50419).
 - Every new check passes on correct code and must be shown to fail on an injected fault.
 - `npm run ci` and `node scripts/xray.mjs test` pass before every commit.
 - Ablation mode and the Break/Fix puzzle are paused (`wip/ablation` branch). Do not resume them.
