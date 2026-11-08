@@ -158,15 +158,23 @@
         </div>
         <div class="plate-row leak-row" data-leaks></div>
         <aside class="finding">
-          <h3>A candidate finding</h3>
+          <h3>A known issue: packed documents and <code>use_cache</code></h3>
           <p>
             transformers detects packed documents from <code>position_ids</code> only when no cache object
             exists. Most model configs default to <code>use_cache=True</code>, which creates one even in
             training mode. A hand-written loop that feeds packed <code>position_ids</code> without
             <code>use_cache=False</code> lets documents attend to each other, with no warning. The
             <code>Trainer</code> is not affected: it sets the flag from its arguments. Measured on
-            <span data-version="transformers"></span>. Treat it as a candidate until the maintainers confirm
-            it.
+            <span data-version="transformers"></span>.
+          </p>
+          <p>
+            It is already reported in
+            <a href="https://github.com/huggingface/transformers/issues/50419">transformers#50419</a>. A
+            maintainer replied that a cache should not be used during training and suggested documenting that
+            requirement; fixes are proposed in
+            <a href="https://github.com/huggingface/transformers/pull/50190">#50190</a> and
+            <a href="https://github.com/huggingface/transformers/pull/50421">#50421</a>. Until one lands, pass
+            <code>use_cache=False</code> when you train on packed sequences.
           </p>
         </aside>
       </section>

@@ -175,5 +175,5 @@ def test_packed_position_ids_without_cache_do_not_leak(leak_batch):
 
 
 def test_packed_position_ids_with_default_cache_leak(leak_batch):
-    """Documents the candidate finding for the installed transformers version."""
+    """Documents the known issue (transformers#50419) for the installed transformers version."""
     assert max_leak(custom_loop_leak(leak_batch, use_cache=None)) > 1e-3
