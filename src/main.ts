@@ -4,6 +4,7 @@ import "./ui/sky.css";
 import "./ui/ablation.css";
 import { FORMULAS } from "./atlas/formulas";
 import { prefersReducedMotion } from "./ui/dom";
+import { FLAGS, flagQuery } from "./ui/flags";
 import { createLab } from "./ui/lab";
 import { SearchPalette } from "./ui/search";
 import type { SkyView } from "./ui/skyView";
@@ -27,12 +28,21 @@ void Promise.all(
     document.fonts?.load(f).catch(() => undefined),
   ),
 );
+/** The sky's URL: the bare path, keeping ?tour=1 and any enabled feature flags. */
+const skyUrl = (tour: boolean): string => {
+  const q = `${tour ? "&tour=1" : ""}${flagQuery()}`;
+  return location.pathname + (q ? `?${q.slice(1)}` : "");
+};
 const known = (id: string | null): id is string => !!id && FORMULAS.some((f) => f.id === id);
 
 const lab = createLab(labEl, {
   navigate: (id) => {
     if (view === "lab")
-      history.replaceState({ view: "lab", fromSky: history.state?.fromSky ?? false }, "", `?f=${id}`);
+      history.replaceState(
+        { view: "lab", fromSky: history.state?.fromSky ?? false },
+        "",
+        `?f=${id}${flagQuery()}`,
+      );
   },
   back: () => {
     if (history.state?.fromSky) history.back();
@@ -41,7 +51,11 @@ const lab = createLab(labEl, {
   search: openSearch,
   ablation: (id, token) => {
     if (view !== "lab") return;
-    history.replaceState(history.state, "", `?f=${id}${token ? `&ablate=${encodeURIComponent(token)}` : ""}`);
+    history.replaceState(
+      history.state,
+      "",
+      `?f=${id}${flagQuery()}${token ? `&ablate=${encodeURIComponent(token)}` : ""}`,
+    );
   },
 });
 
@@ -110,7 +124,7 @@ const katexOf = (el: Element | null) => el?.querySelector(".katex") ?? null;
 async function toLab(id: string, from: HTMLElement | null, push: boolean): Promise<void> {
   if (transitioning) return;
   transitioning = true;
-  if (push) history.pushState({ view: "lab", fromSky: true }, "", `?f=${id}`);
+  if (push) history.pushState({ view: "lab", fromSky: true }, "", `?f=${id}${flagQuery()}`);
   view = "lab";
   document.body.classList.remove("in-sky");
   lab.reset();
@@ -142,7 +156,7 @@ async function toSky(replace: boolean): Promise<void> {
   transitioning = true;
   const id = lab.current();
   const s = await ensureSky();
-  if (replace) history.replaceState({ view: "sky" }, "", location.pathname);
+  if (replace) history.replaceState({ view: "sky" }, "", skyUrl(false));
   view = "sky";
   lab.setActive(false);
   document.body.classList.add("in-sky");
@@ -180,18 +194,18 @@ async function boot(): Promise<void> {
   const id = params.get("f");
   if (known(id)) {
     view = "lab";
-    history.replaceState({ view: "lab", fromSky: false }, "", `?f=${id}`);
+    history.replaceState({ view: "lab", fromSky: false }, "", `?f=${id}${flagQuery()}`);
     labEl.hidden = false;
     lab.go(id);
     lab.setActive(true);
     const token = params.get("ablate");
-    if (token) lab.ablate(token);
+    if (token && FLAGS.ablation) lab.ablate(token);
     return;
   }
   const s = await ensureSky();
   view = "sky";
   document.body.classList.add("in-sky");
-  history.replaceState({ view: "sky" }, "", location.pathname + (params.has("tour") ? "?tour=1" : ""));
+  history.replaceState({ view: "sky" }, "", skyUrl(params.has("tour")));
   s.show();
   s.intro();
   if (params.has("tour")) setTimeout(() => void s.startTour(), prefersReducedMotion() ? 300 : 3400);
