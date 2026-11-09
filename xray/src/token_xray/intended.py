@@ -128,3 +128,26 @@ def group_policy_gradient(
             row.append(0.0 if clipped else A[i] * r / norm)
         out.append(row)
     return A, out
+
+
+# ── data parallel ──────────────────────────────────────────────────────────
+
+
+def per_rank_mean(lengths: list[int], rank_of: list[int], world: int) -> list[list[float]]:
+    """Token mean on each rank, then DDP's average over ranks: w = 1 / (W · N_r), times N.
+    Equal to the global token mean only when every rank holds the same number of target tokens."""
+    n = _targets(lengths)
+    N = sum(n)
+    per = [0] * world
+    for ni, r in zip(n, rank_of):
+        per[r] += ni
+    return [[N / (world * per[r])] * ni for ni, r in zip(n, rank_of)]
+
+
+def with_multiplicity(lengths: list[int], copies: list[int]) -> list[list[float]]:
+    """Global token mean over a batch in which sequence i appears copies[i] times (sampler padding):
+    each copy counts in the normaliser and each adds its gradient, so w·N = copies_i · N / N_seen."""
+    n = _targets(lengths)
+    N = sum(n)
+    seen = sum(c * ni for c, ni in zip(copies, n))
+    return [[c * N / seen] * ni for c, ni in zip(copies, n)]

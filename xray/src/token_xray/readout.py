@@ -170,3 +170,21 @@ def read_pairs(grads: dict[int, torch.Tensor], unit: dict[Pair, torch.Tensor], p
         for b, wb in zip(targets, w.tolist()):
             weights[(a, b)] = wb
     return PairRead(weights=weights, residual=residual)
+
+
+# ── row readout: the embedding PARAMETER gradient ──────────────────────────
+#
+# Under data parallelism each rank's activation gradients are local: DDP averages PARAMETER
+# gradients in its all-reduce, after backward. To see the cross-rank weighting, read the input
+# embedding's parameter gradient instead. Tracer ids are unique, so row t of that gradient is the sum
+# of the activation gradients at every position holding token t, after any all-reduce. On one process
+# it equals the activation readout exactly; when a token occurs more than once (a duplicated sample),
+# the row holds the sum of its occurrences, which is exactly what reaches the parameters.
+
+
+def embedding_row_grads(model, token_ids) -> dict[int, torch.Tensor]:
+    """Rows of the input-embedding parameter gradient for the given tracer ids."""
+    g = model.get_input_embeddings().weight.grad
+    if g is None:
+        raise RuntimeError("the embedding has no gradient: run backward first")
+    return {int(t): g[int(t)].detach().clone() for t in token_ids if int(t) != PAD_ID}

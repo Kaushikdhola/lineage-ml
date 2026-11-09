@@ -151,14 +151,22 @@ async function main() {
     "emu-dropped": () => [
       { rows: [micro, data.aggregation.lengths.length - 1], note: "never reached the optimizer" },
     ],
+    "hf-ddp-per-rank": () => {
+      const p = panel("hf-ddp-per-rank") as Panel & { ranks: number[][]; rankTargets: number[] };
+      return p.ranks.map((seqs, r) => ({
+        rows: [Math.min(...seqs), Math.max(...seqs)] as [number, number],
+        note: `rank ${r}: ×${fmt(p.weights[seqs[0]][0], 3)}`,
+      }));
+    },
   };
   const showStep = (id: string) => {
     const p = panel(id);
     acc.show(weightFilm(p, data, 3, stepNotes[id]()));
     acc.redraw();
+    const ranks = (p as Panel & { rankTargets?: number[] }).rankTargets;
     caption(
       accFig,
-      `${kindLabel(p.kind)}: ${clean(p.title)}. Largest deviation from the equation: ${fmt(p.maxDeviation, 3)}.${
+      `${kindLabel(p.kind)}: ${clean(p.title)}.${ranks ? ` Target tokens per rank: ${ranks.join(" and ")}.` : ""} Largest deviation from the equation: ${fmt(p.maxDeviation, 3)}.${
         p.source ? ` <a href="${p.source}" rel="noopener" target="_blank">Source</a>` : ""
       }`,
     );
