@@ -12,7 +12,7 @@ numbers, the maintainer's replies on #50419) remain in the panel notes in `data.
 `xray/README.md`. Longer explanatory prose, the `use_cache` box and the colophon were tightened, not cut to
 three lines, because cutting them would drop the method's limits. On one-column layouts a scrolly step
 activates in a band at 72–92% of the viewport, below the sticky film, instead of 40–60%, where the film
-covered the text. Deviations under 10⁻³ print in scientific notation (they read "0.000" before).
+covered the text. One exception: the dropped-micro-batch step runs to four lines on a phone, because cutting "the other three micro-batches go dark" left readers unsure whether the black film was a rendering fault. Deviations under 10⁻³ print in scientific notation (they read "0.000" before).
 **Alternatives.** Cut every paragraph to three lines (loses honesty caveats); overlay step cards on the film
 (hides the film). **Revert.** `git revert` the copy-pass and mobile commits of this date.
 
