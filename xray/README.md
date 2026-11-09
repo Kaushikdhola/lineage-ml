@@ -93,6 +93,46 @@ Versions: transformers 5.22.2, TRL 1.17.1, torch 2.15 (the 4.45.2 row uses torch
 **Emulations** reproduce, in plain PyTorch, the documented mechanism of a bug in code that cannot be run
 here. They are always labelled and never presented as the library itself.
 
+### Gradient accumulation before the October 2024 fix (the hero plate)
+
+The site's first plate is a real run of the transformers **4.45.2** `Trainer` with four accumulation
+steps, in a separate environment (`.venv-hf445`, pinned in `requirements-hf445.txt`, created by
+`scripts/setup.sh`). `token-xray legacy-ga` runs the probe, the unit gradients and the readout entirely
+inside that environment, so nothing mixes library versions. The weights match the mean of micro-batch
+means in closed form; the current release matches the token mean.
+
+### Data parallel: relation R2
+
+R2: a token's weight must not depend on how the batch is split across data-parallel ranks. Activation
+gradients are local to a rank (DDP averages _parameter_ gradients in the all-reduce), so these runs read
+the input embedding's parameter gradient after the all-reduce. Tracer rows are unique, so row _t_ holds
+token _t_'s gradient; on one process this row readout equals the activation readout.
+
+- `torch.multiprocessing.spawn`, gloo, DDP around the probe: with a global token mean the weights for world
+  size 1 and 2 are identical (equal and uneven tokens per rank); an average of per-rank token means breaks
+  R2 whenever ranks hold different token counts, and matches `intended.per_rank_mean`.
+- The real `Trainer` under `torchrun` on two CPU processes: the default
+  `average_tokens_across_devices=True` gives the token mean; `False` gives the per-rank mean.
+- **`DistributedSampler` padding.** With `drop_last=False` and a dataset that does not divide evenly, the
+  sampler repeats samples. The repeat carries the same tracer ids, so its rows hold the sum of both copies,
+  which is exactly what reaches the parameters: the repeated sample counts twice in that step
+  (`intended.with_multiplicity`). This is documented sampler behaviour, not a bug.
+
+### TRL runs
+
+Real runs of `SFTTrainer`, `DPOTrainer` and `GRPOTrainer` (TRL 1.17.1) on the probe:
+
+- **SFT** with `padding_free=True` and with `packing=True` (bfd): a global token mean across accumulation;
+  the leak matrix built through the trainer (one run per document, labels on that document only) is
+  exactly zero, because SFT passes `use_cache=False`.
+- **DPO**, sigmoid loss: every completion token gets β·σ(−βΔ)/P, positive on chosen and negative on
+  rejected answers (verified against autograd and measured through the trainer).
+- **GRPO** with scripted completions (each ending with its own EOS id) and `num_iterations=2`: the default
+  `loss_type` is `dapo`; `dapo`, `grpo` and `dr_grpo` all match the clipped surrogate at both steps,
+  including the tokens the clip zeroes once ratios move. TRL's `dr_grpo` keeps `scale_rewards="group"`
+  unless set to `"none"`; the published Dr. GRPO drops it. Step-1 weights are checked against
+  `src/core/aggregation.ts`.
+
 ### Known issue: packed sequences and `use_cache`
 
 transformers detects packed sequences from `position_ids` only when no `attention_mask` is passed and no
