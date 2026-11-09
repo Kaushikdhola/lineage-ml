@@ -658,14 +658,19 @@ main {
   padding: 0;
 }
 .colophon {
-  padding: clamp(56px, 9vh, 104px) var(--gutter);
+  /* same left edge as the story: the content column is centred at --wide */
+  padding: clamp(56px, 9vh, 104px) max(var(--gutter), calc((100% - var(--wide)) / 2));
   border-top: 1px solid var(--rule);
   background: var(--room-raised);
+  display: grid;
+  /* whole paragraphs side by side, read left to right, never split across columns */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: 0 56px;
+  align-items: start;
 }
-.colophon > * {
-  max-width: var(--wide);
-  margin-left: auto;
-  margin-right: auto;
+.colophon h2,
+.colophon .links {
+  grid-column: 1 / -1;
 }
 .colophon h2 {
   font-size: 1.5rem;
@@ -673,11 +678,7 @@ main {
 .colophon p {
   color: var(--muted);
   font-size: 0.9rem;
-  max-width: none;
-}
-.colophon p:not(.links) {
-  column-width: 34ch;
-  column-gap: 48px;
+  max-width: var(--measure);
 }
 .links {
   display: flex;
