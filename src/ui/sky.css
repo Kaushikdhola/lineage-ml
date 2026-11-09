@@ -171,6 +171,17 @@ input:focus-visible {
   margin-top: 6px;
   color: var(--ink-2);
 }
+.sky-legend .sky-story {
+  display: block;
+  margin-top: 6px;
+  color: var(--ink-2);
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  pointer-events: auto; /* the legend itself lets clicks through to the sky */
+}
+.sky-legend .sky-story:hover {
+  color: var(--ink);
+}
 .sky-count {
   position: absolute;
   right: 32px;
