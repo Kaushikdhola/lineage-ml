@@ -112,7 +112,7 @@ def hf_trainer(
         return StepResult(
             grads=rec.grads,
             logged_loss=float(logs[0]["loss"]) if logs else None,
-            info={"library": "transformers.Trainer"},
+            info={"library": "transformers.Trainer", "pad_sink": rec.pad_sink},
         )
 
 
@@ -168,19 +168,35 @@ def emulate_dropped_microbatches(batch: TracerBatch, micro: int, model_seed: int
     return StepResult(grads=rec.grads, info={"emulates": "gradient of micro-batches 2..k dropped"})
 
 
-def emulate_pad_equals_eos(batch: TracerBatch, model_seed: int = 0) -> StepResult:
-    """EMULATION of a common SFT setup bug: pad_token = eos_token, and the collator masks every
-    label equal to pad, which silently removes the real end-of-sequence targets."""
+def with_eos(batch: TracerBatch) -> TracerBatch:
+    """The same tracer sequences, each ending with an EOS whose id is the pad id (0)."""
+    return TracerBatch(sequences=[s + [PAD_ID] for s in batch.sequences], vocab_size=batch.vocab_size,
+                       seq_of_token=dict(batch.seq_of_token))
+
+
+def hf_trainer_pad_equals_eos(batch: TracerBatch, model_seed: int = 0) -> StepResult:
+    """One step of the unmodified Trainer with the library's DataCollatorForLanguageModeling (mlm=False)
+    and a tokenizer whose pad token is its EOS token. Every sequence ends with that EOS."""
+    from transformers import DataCollatorForLanguageModeling, Trainer, TrainingArguments
+
+    from .trl_runners import tracer_tokenizer
+
+    eos = with_eos(batch)
     model = build_probe(batch.vocab_size, "aggregation", seed=model_seed)
-    eos_ids = tuple(s[-1] for s in batch.sequences)  # treat each sequence's last token as its EOS
-    with recording(model) as rec:
-        b = collate([{"input_ids": s} for s in batch.sequences], pad_label_ids=eos_ids)
-        logits = model(input_ids=b["input_ids"], attention_mask=b["attention_mask"]).logits
-        tgt = b["labels"][:, 1:]
-        n = int((tgt != -100).sum())
-        loss = F.cross_entropy(logits[:, :-1].reshape(-1, logits.shape[-1]), tgt.reshape(-1), ignore_index=-100, reduction="sum") / n
-        loss.backward()
-    return StepResult(grads=rec.grads, info={"emulates": "pad == eos label masking"})
+    tok = tracer_tokenizer(batch.vocab_size)
+    assert tok.pad_token_id == tok.eos_token_id == PAD_ID
+    ds = _ListDataset(eos)
+    with tempfile.TemporaryDirectory() as out:
+        args = TrainingArguments(output_dir=out, per_device_train_batch_size=len(eos.sequences), max_steps=1,
+                                 learning_rate=1e-3, max_grad_norm=0.0, report_to=[], use_cpu=True, save_strategy="no",
+                                 logging_strategy="no", seed=0, remove_unused_columns=False, disable_tqdm=True)
+        trainer = Trainer(model=model, args=args, train_dataset=ds,
+                          data_collator=DataCollatorForLanguageModeling(tok, mlm=False))
+        trainer._get_train_sampler = lambda *a, **k: torch.utils.data.SequentialSampler(ds)
+        with recording(model) as rec:
+            trainer.train()
+    return StepResult(grads=rec.grads, info={"library": "transformers DataCollatorForLanguageModeling",
+                                             "pad_sink": rec.pad_sink})
 
 
 Runner = Callable[[TracerBatch], StepResult]

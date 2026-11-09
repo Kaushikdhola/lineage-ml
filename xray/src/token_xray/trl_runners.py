@@ -7,7 +7,8 @@ rate, loss type) and, for GRPO, the completions: `model.generate` is replaced by
 fixed tracer completions, so the trainer's own code still slices, masks, scores and optimizes them.
 
 Precision: TRL's configs default to bf16 mixed precision (also on CPU). The runners pass bf16=False so
-the measured weights are exact; with the default, every weight carries ~5e-3 of bf16 rounding.
+the measured weights are exact; with the default, every SFT weight carries a few 1e-3 of bf16 rounding
+on this probe (the export records the measured value).
 """
 from __future__ import annotations
 
@@ -119,7 +120,7 @@ def sft_trainer(
             grads=rec.grads,
             logged_loss=float(logs[0]["loss"]) if logs else None,
             info={"library": "trl.SFTTrainer", "micro_batches": seen, "rows": len(trainer.train_dataset),
-                  "padding_free": trainer.padding_free, "bf16": bf16},
+                  "padding_free": trainer.padding_free, "bf16": bf16, "pad_sink": rec.pad_sink},
         )
 
 
@@ -151,6 +152,11 @@ class PromptBatch:
     completions: list[list[int]]  # in batch order
     vocab_size: int
     owner: dict[int, int] = field(default_factory=dict)  # completion token id -> completion index
+    eos_ids: list[int] = field(default_factory=list)  # per-completion EOS tracers (GRPO)
+    hidden: int = 16  # probe width: at least 2G, so every shared prompt token's targets stay identifiable
+
+    def probe(self, seed: int = 0):
+        return build_probe(self.vocab_size, seed=seed, hidden_size=self.hidden)
 
     def pairs(self, k: int, prompt: list[int]) -> list[tuple[int, int]]:
         """(input, target) for every scored token of completion k: the prompt's last token predicts the
@@ -201,8 +207,8 @@ def dpo_trainer(pb: PromptBatch, beta: float = 0.1, model_seed: int = 0, ref_see
     from trl import DPOConfig, DPOTrainer
 
     P = len(pb.prompts)
-    model = build_probe(pb.vocab_size, seed=model_seed)
-    ref = build_probe(pb.vocab_size, seed=ref_seed)
+    model = pb.probe(model_seed)
+    ref = pb.probe(ref_seed)
     # margins Δ_i from the definition, before the step
     deltas = []
     for i in range(P):
@@ -221,23 +227,27 @@ def dpo_trainer(pb: PromptBatch, beta: float = 0.1, model_seed: int = 0, ref_see
         _sequential(trainer)
         with recording(model) as rec:
             trainer.train()
-    return {"grads": rec.grads, "deltas": deltas, "beta": beta, "loss_type": list(args.loss_type)}
+    return {"grads": rec.grads, "deltas": deltas, "beta": beta, "loss_type": list(args.loss_type),
+            "pad_sink": rec.pad_sink}
 
 
 # ── GRPO ────────────────────────────────────────────────────────────────────
 
 
 def grpo_batch(prompt_len: int, lengths: list[int]) -> PromptBatch:
-    """One prompt, G completions; each completion ends with EOS like a real one (EOS is scored)."""
+    """One prompt, G completions. Each completion ends with its OWN end-of-sequence tracer (scored, like a
+    real EOS), declared to the model as an EOS id, so no scored position ever holds the pad id."""
     prompt = _ids(1, prompt_len)
-    nxt, comps, owner = prompt_len + 1, [], {}
+    nxt, comps, owner, eos_ids = prompt_len + 1, [], {}, []
     for L in lengths:
-        ids = _ids(nxt, L)
-        nxt += L
+        ids = _ids(nxt, L + 1)  # L tokens, then this completion's EOS
+        nxt += L + 1
         for t in ids:
             owner[t] = len(comps)
-        comps.append(ids + [EOS_ID])
-    return PromptBatch(prompts=[prompt], completions=comps, vocab_size=nxt, owner=owner)
+        comps.append(ids)
+        eos_ids.append(ids[-1])
+    return PromptBatch(prompts=[prompt], completions=comps, vocab_size=nxt, owner=owner, eos_ids=eos_ids,
+                       hidden=max(16, 2 * len(lengths)))
 
 
 def _scripted_generate(model, completions: list[list[int]]):
@@ -272,7 +282,8 @@ def grpo_trainer(
     from trl import GRPOConfig, GRPOTrainer
 
     G = len(pb.completions)
-    model = build_probe(pb.vocab_size, seed=model_seed)
+    model = pb.probe(model_seed)
+    model.generation_config.eos_token_id = list(pb.eos_ids)  # TRL ends a completion at any declared EOS id
     _scripted_generate(model, pb.completions)
     reward_of = {c[0]: r for c, r in zip(pb.completions, rewards)}
 
@@ -300,7 +311,7 @@ def grpo_trainer(
             rec = GradRecorder(model)
             with rec:
                 out_ = step(m, inputs, *a, **k)
-            steps.append({"grads": rec.grads, "state": snap})
+            steps.append({"grads": rec.grads, "state": snap, "pad_sink": rec.pad_sink})
             return out_
 
         trainer.training_step = recorded_step
@@ -311,14 +322,14 @@ def grpo_trainer(
     return {"steps": steps, "config": used, "vocab_size": pb.vocab_size}
 
 
-def probe_at(state: dict, vocab_size: int, seed: int = 0):
-    m = build_probe(vocab_size, seed=seed)
+def probe_at(state: dict, pb: PromptBatch, seed: int = 0):
+    m = pb.probe(seed)
     m.load_state_dict(state)
     return m
 
 
 def ratios_between(pb: PromptBatch, new_state: dict, old_state: dict) -> list[list[float]]:
     """ρ_t = π_new(token) / π_old(token) for every scored completion token (definition, plain forward)."""
-    new, old = probe_at(new_state, pb.vocab_size), probe_at(old_state, pb.vocab_size)
+    new, old = probe_at(new_state, pb), probe_at(old_state, pb)
     p = pb.prompts[0]
     return [torch.exp(sequence_logps(new, p, c) - sequence_logps(old, p, c)).tolist() for c in pb.completions]

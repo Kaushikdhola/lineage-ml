@@ -80,3 +80,15 @@ C Paired sample size (Connor) · C Minimum detectable effect
 4. **From gradient descent to AdamW**
 5. **From autoencoder to diffusion**
 6. **Softmax lens**: one function in attention, policies, preferences and leaderboards
+
+## Token X-ray: deferred from the 2026-11-09 red-team review
+
+- **Optimizer-input readout.** The current readout sees gradients during backward, before clipping and
+  the optimizer, so bugs in the optimizer step (the DeepSpeed ZeRO-1/2 CPU-offload gradient copy) are
+  outside its view; that plate is an emulation. Read the gradient the optimizer actually consumes, through
+  `optimizer.register_step_pre_hook` and, for DeepSpeed, its fp32 partition buffers, and test it with a
+  planted copy-skip.
+- **A peaked probe.** The probe is untrained and near-uniform, so state-dependent numbers (label
+  smoothing's cosine, DPO margins, GRPO ratios and clipping, leak sizes) describe it, not a trained model.
+  Add a probe with peaked predictions (a few pre-training steps, or a scaled LM head) and rerun the
+  smoothing, DPO and GRPO checks on it.

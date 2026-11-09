@@ -12,7 +12,7 @@ requires-python = ">=3.10.2"
 dependencies = ["torch>=2.3", "transformers>=4.46", "numpy>=1.26"]
 
 [project.optional-dependencies]
-trl = ["trl>=0.20"]
+trl = ["trl>=1.0,<2"]
 dev = ["pytest>=8"]
 
 [project.scripts]

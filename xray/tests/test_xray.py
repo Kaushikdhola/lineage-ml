@@ -39,13 +39,27 @@ def dev(res, unit, batch, want):
 # ── the instrument ──────────────────────────────────────────────────────────
 
 
-def test_probe_isolates_positions(batch):
-    """Aggregation mode: a token's gradient must not depend on other sequences."""
-    m = build_probe(batch.vocab_size)
-    a = m(input_ids=torch.tensor([batch.sequences[1]])).logits[0]
-    x = collate([{"input_ids": s} for s in batch.sequences])
-    b = m(input_ids=x["input_ids"], attention_mask=x["attention_mask"]).logits[1, : len(batch.sequences[1])]
-    assert torch.allclose(a, b, atol=1e-12)
+def _cross_document_gradient(mode: str) -> float:
+    """Two documents in ONE row, no mask, no position reset: the loss of document B (second), and the
+    gradient that reaches document A's positions. Only isolation inside the probe can make it zero."""
+    a, bdoc = [1, 2, 3, 4, 5], [6, 7, 8, 9]
+    m = build_probe(10, mode)
+    ids = torch.tensor([a + bdoc])
+    emb = m.get_input_embeddings()(ids).detach().requires_grad_()
+    logits = m(inputs_embeds=emb).logits[0]
+    start = len(a)
+    F.cross_entropy(logits[start:-1], ids[0, start + 1 :], reduction="sum").backward()
+    return float(emb.grad[0, :start].abs().max())
+
+
+def test_probe_isolates_positions():
+    """Aggregation mode: B's loss sends exactly zero gradient into A, although A is in B's attention window."""
+    assert _cross_document_gradient("aggregation") == 0.0
+
+
+def test_probe_isolation_control_leaks_with_attention_live():
+    """Negative control: the same row with attention live must leak, or the check above proves nothing."""
+    assert _cross_document_gradient("leak") > 1e-3
 
 
 def test_reference_is_exact(batch, unit):
@@ -74,7 +88,9 @@ def test_readout_recovers_known_weights(batch, unit):
 def test_hf_trainer_gradient_accumulation_matches_token_mean(batch, unit):
     tm = intended.token_mean(LENGTHS)
     assert dev(R.hf_trainer(batch, 8, 1), unit, batch, tm) < TOL
-    assert dev(R.hf_trainer(batch, 2, 4), unit, batch, tm) < TOL
+    res = R.hf_trainer(batch, 2, 4)
+    assert dev(res, unit, batch, tm) < TOL
+    assert res.info["pad_sink"] == 0.0  # no loss reached a padding position
 
 
 def test_hf_trainer_order_invariant(batch, unit):
@@ -119,9 +135,17 @@ def test_emulated_bug_is_detected_and_predicted(batch, unit, run, predict):
     assert dev(res, unit, batch, predict(LENGTHS)) < TOL  # and matches the closed form
 
 
-def test_pad_equals_eos_removes_eos_targets(batch, unit):
-    got = read(R.emulate_pad_equals_eos(batch).grads, unit, batch).normalized
-    assert all(abs(row[-1]) < 1e-12 for row in got)  # the target that is the EOS gets zero weight
+def test_library_collator_with_pad_equal_to_eos_removes_eos_targets(batch):
+    """Real run: transformers' DataCollatorForLanguageModeling with pad token = EOS token."""
+    eb = R.with_eos(batch)
+    eunit = unit_gradients(build_probe(eb.vocab_size), eb)
+    res = R.hf_trainer_pad_equals_eos(batch)
+    got = read(res.grads, eunit, eb).normalized
+    lengths = [L + 1 for L in LENGTHS]
+    assert all(abs(row[-1]) < 1e-12 for row in got)  # every sequence's EOS target gets zero weight
+    pred = intended.labels_equal_to_pad_masked(lengths)
+    assert max(abs(g - w) for gr, wr in zip(got, pred) for g, w in zip(gr, wr)) < TOL
+    assert res.info["pad_sink"] == 0.0
 
 
 # ── public API ──────────────────────────────────────────────────────────────

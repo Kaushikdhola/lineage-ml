@@ -44,6 +44,15 @@ def first_microbatch_only(lengths: list[int], micro: int) -> list[list[float]]:
     return [[1.0 if i < micro else 0.0] * ni for i, ni in enumerate(n)]
 
 
+
+def labels_equal_to_pad_masked(lengths: list[int]) -> list[list[float]]:
+    """Each sequence ends with an EOS whose id is also the pad id. A collator that sets every label equal
+    to the pad id to -100 drops each sequence's last target (the EOS): it gets weight 0, and the
+    remaining tokens share the normaliser, w·N = N / (N - B). Lengths include the EOS."""
+    n = _targets(lengths)
+    N, B = sum(n), len(n)
+    return [[N / (N - B)] * (ni - 1) + [0.0] for ni in n]
+
 # ── preference and RL objectives ───────────────────────────────────────────
 #
 # These return the raw weight on each completion token's cross-entropy, w = −∂L/∂log π(token)

@@ -87,12 +87,14 @@ def aggregation_panels(lengths=SITE_LENGTHS, micro=MICRO) -> list[dict]:
               tm, "Mechanism of the gradient-accumulation loss bug fixed in transformers in October 2024.",
               "https://huggingface.co/blog/gradient_accumulation"),
         panel("emu-dropped", "Emulation: later micro-batches dropped", "emulation", R.emulate_dropped_microbatches(b, micro),
-              tm, "Mechanism reported for an optimizer-offload path (DeepSpeed ZeRO-1/2 CPU offload, PR #6550).",
+              tm, "The effect on gradients of the bug reported in DeepSpeed's ZeRO-1/2 CPU-offload path (introduced in "
+              "PR #6550, Sept 2024; fixed in PR #7967). The real bug sits after backward, in the optimizer's gradient "
+              "buffer, where this readout cannot see it; this plate emulates its effect.",
               "https://arxiv.org/abs/2604.23747"),
-        panel("emu-pad-eos", "Emulation: pad token = EOS", "emulation", R.emulate_pad_equals_eos(b), tm,
-              "Masking every label equal to the pad id also removes the real end-of-sequence targets."),
+        pad_eos_panel(lengths),
         ddp_panel(True),
         ddp_panel(False),
+        run_legacy_ga(),
     ]
 
 
@@ -123,6 +125,88 @@ def ddp_section(lengths=SITE_LENGTHS) -> dict:
     return {"cases": cases, "sampler": {"assignment": rs.assignment, "copies": copies,
                                         "maxDeviationFromTokenMean": dev(w, intended.token_mean(L11)),
                                         "maxDeviationFromMultiplicity": dev(w, intended.with_multiplicity(L11, copies))}}
+
+
+def pad_eos_panel(lengths=SITE_LENGTHS) -> dict:
+    """Real run: the library collator with pad token = EOS token. Each sequence ends with that EOS."""
+    eb = R.with_eos(make_batch(lengths))
+    unit = unit_gradients(build_probe(eb.vocab_size), eb)
+    res = R.hf_trainer_pad_equals_eos(make_batch(lengths))
+    x = read(res.grads, unit, eb)
+    got = x.normalized
+    eos_lengths = [L + 1 for L in lengths]
+    tm = intended.token_mean(eos_lengths)
+    pred = intended.labels_equal_to_pad_masked(eos_lengths)
+    dev = lambda want: max(abs(g - w) for gr, wr in zip(got, want) for g, w in zip(gr, wr))  # noqa: E731
+    return {
+        "id": "hf-pad-eos", "title": "transformers DataCollatorForLanguageModeling, pad = EOS", "kind": "real",
+        "note": "The library collator masks every label equal to the pad id, which also removes the real "
+                "end-of-sequence targets: the model is never taught to stop.",
+        "source": None, "weights": [[round(v, 6) for v in row] for row in got],
+        "intended": [[round(v, 6) for v in row] for row in tm], "maxDeviation": dev(tm),
+        "predictedDeviation": dev(pred), "minCos": x.min_cos, "loggedLoss": None, "padSink": res.info["pad_sink"],
+    }
+
+
+def legacy_ga_panel(lengths=SITE_LENGTHS, micro=MICRO) -> dict:
+    """The gradient-accumulation step measured with whatever transformers is installed. Run by
+    `token-xray legacy-ga` inside .venv-hf445 (transformers 4.45.2, before the October 2024 fix); the
+    probe, unit gradients and readout all run in that environment, so nothing mixes versions."""
+    import transformers
+
+    b = make_batch(lengths)
+    unit = unit_gradients(build_probe(b.vocab_size), b)
+    k = len(lengths) // micro
+    res = R.hf_trainer(b, micro, k)
+    x = read(res.grads, unit, b)
+    got = x.normalized
+    tm = intended.token_mean(lengths)
+    pred = intended.mean_of_microbatch_means(lengths, micro)
+    dev = lambda want: max(abs(g - w) for gr, wr in zip(got, want) for g, w in zip(gr, wr))  # noqa: E731
+    return {
+        "id": "hf445-ga",
+        "title": f"transformers {transformers.__version__} Trainer, {k} accumulation steps",
+        "kind": "real",
+        "note": "The Trainer as released before the October 2024 fix: each micro-batch's mean loss is divided by "
+                "the number of accumulation steps, so micro-batches with few tokens count as much as those with many.",
+        "source": "https://huggingface.co/blog/gradient_accumulation",
+        "weights": [[round(v, 6) for v in row] for row in got],
+        "intended": [[round(v, 6) for v in row] for row in tm],
+        "maxDeviation": dev(tm),
+        "predictedDeviation": dev(pred),  # against the mean-of-micro-batch-means closed form
+        "minCos": x.min_cos,
+        "loggedLoss": res.logged_loss,
+        "versions": {"transformers": transformers.__version__, "torch": torch.__version__},
+    }
+
+
+def legacy_python() -> str:
+    """The interpreter of the side environment with transformers 4.45.2 (see scripts/setup.sh)."""
+    import os
+    from pathlib import Path
+
+    return os.environ.get("XRAY_HF445_PYTHON", str(Path(__file__).resolve().parents[3] / ".venv-hf445/bin/python"))
+
+
+def run_legacy_ga() -> dict:
+    import json
+    import os
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    py = legacy_python()
+    if not Path(py).exists():
+        raise RuntimeError(f"{py} not found: run scripts/setup.sh (it creates .venv-hf445 from xray/requirements-hf445.txt)")
+    src = str(Path(__file__).resolve().parents[1])
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "legacy.json")
+        p = subprocess.run([py, "-m", "token_xray.cli", "legacy-ga", out], env={**os.environ, "PYTHONPATH": src},
+                           capture_output=True, text=True, timeout=900)
+        if p.returncode != 0:
+            raise RuntimeError(f"legacy-ga failed:\n{p.stderr[-3000:]}")
+        with open(out) as f:
+            return json.load(f)
 
 
 def leak_panels(lengths=LEAK_LENGTHS) -> list[dict]:
@@ -217,7 +301,11 @@ def sft_panels(lengths=SITE_LENGTHS, micro=MICRO, leak_lengths=LEAK_LENGTHS) -> 
         leaks.append({"id": pid, "title": title, "kind": "real", "matrix": M.round(6).tolist(), "maxLeak": max_leak(M),
                       "note": "All documents in one flattened row, labels on one document per run. SFTTrainer passes "
                               "use_cache=False, so transformers detects the packed sequences from position_ids."})
-    return {"lengths": lengths, "micro": micro, "weights": weights, "leakLengths": leak_lengths, "leaks": leaks}
+    # TRL's default bf16 mixed precision, measured on the same SFT step (declared rounding, not a re-weighting)
+    bf = read(sft_trainer(b, micro, k, padding_free=True, bf16=True).grads, unit, b).normalized
+    bf16_dev = max(abs(g - w) for gr, wr in zip(bf, tm) for g, w in zip(gr, wr))
+    return {"lengths": lengths, "micro": micro, "weights": weights, "leakLengths": leak_lengths, "leaks": leaks,
+            "bf16Deviation": bf16_dev}
 
 
 def dpo_panel(shape=DPO_SHAPE) -> dict:
@@ -227,7 +315,7 @@ def dpo_panel(shape=DPO_SHAPE) -> dict:
     res = dpo_trainer(pb, beta=shape["beta"])
     rows = [pb.pairs(k, pb.prompts[k // 2]) for k in range(len(pb.completions))]
     allp = [p for r in rows for p in r]
-    pr = read_pairs(res["grads"], unit_pair_gradients(build_probe(pb.vocab_size), allp), allp)
+    pr = read_pairs(res["grads"], unit_pair_gradients(pb.probe(), allp), allp)
     got = [[pr.weights[p] for p in r] for r in rows]
     ch, rj = intended.dpo_sigmoid([len(c) for c in pb.completions[0::2]], [len(c) for c in pb.completions[1::2]],
                                   res["deltas"], shape["beta"])
@@ -237,7 +325,8 @@ def dpo_panel(shape=DPO_SHAPE) -> dict:
         "rowLabels": [f"Pair {k // 2 + 1}, {'chosen' if k % 2 == 0 else 'rejected'}, {len(c)} tokens"
                       for k, c in enumerate(pb.completions)],
         "deltas": res["deltas"], "weights": got, "intended": want,
-        "maxRelDeviation": _rel_dev(got, want), "residual": pr.residual,
+        "maxRelDeviation": _rel_dev(got, want), "residual": pr.residual, "cond": pr.cond,
+        "padSink": res["pad_sink"],
         "note": "Every token of a completion gets the same weight, beta * sigmoid(-beta * margin) / pairs, pushed up on "
                 "the chosen answer and down on the rejected one. Sequence log-probs are sums, so a longer answer gets "
                 "more total push.",
@@ -258,7 +347,7 @@ def grpo_panels(shape=GRPO_SHAPE) -> list[dict]:
         cfg = res["config"]
         steps = []
         for s, st in enumerate(res["steps"]):
-            pr = read_pairs(st["grads"], unit_pair_gradients(probe_at(st["state"], pb.vocab_size), allp), allp)
+            pr = read_pairs(st["grads"], unit_pair_gradients(probe_at(st["state"], pb), allp), allp)
             got = [[pr.weights[p] for p in r] for r in rows]
             ratios = ratios_between(pb, st["state"], res["steps"][0]["state"])
             adv, want = intended.group_policy_gradient(
@@ -267,7 +356,8 @@ def grpo_panels(shape=GRPO_SHAPE) -> list[dict]:
                 scale_rewards=cfg["scale_rewards"] != "none")
             steps.append({"step": s + 1, "weights": got, "intended": want, "ratios": ratios, "advantages": adv,
                           "clipped": sum(1 for r in want for w in r if w == 0.0),
-                          "maxRelDeviation": _rel_dev(got, want), "residual": pr.residual})
+                          "maxRelDeviation": _rel_dev(got, want), "residual": pr.residual, "cond": pr.cond,
+                          "padSink": st["pad_sink"]})
         out.append({"id": f"grpo-{pid}", "title": title, "kind": "real", "config": cfg, "lengths": scored,
                     "rewards": shape["rewards"], "learningRate": shape["lr"], "steps": steps})
     return out

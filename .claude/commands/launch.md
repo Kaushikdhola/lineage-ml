@@ -9,6 +9,9 @@ description: Final checks, deploy, publish the package, and draft the launch pos
 3. **Package.** Build `xray/` with `python -m build`; check the README renders; publish to TestPyPI first,
    then PyPI with a token I provide via an environment variable (never write it to disk or the repo).
    Confirm `pip install token-xray` works in a fresh venv and the README example runs.
+   Only after `twine upload` succeeds AND `pip install token-xray` works in a clean venv: switch the install
+   command on the story page (`story/index.html`, `.install`) and in `xray/README.md` from
+   `pip install "git+https://github.com/kaushikdhola/lineage-ml#subdirectory=xray"` to `pip install token-xray`. Until then, keep the git install.
 4. **Posts** (drafts only, I post them):
    - Reddit r/MachineLearning: title starts with `[P]`, plain and specific, no hype; body explains the
      method in 4 sentences, links the story, the repo and the package, and clearly separates real runs,

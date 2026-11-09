@@ -2,6 +2,8 @@
 
     token-xray report                  print the frozen scenarios as a table
     token-xray export public/xray.json write measured results for the website
+    token-xray legacy-ga out.json      measure the gradient-accumulation step with the INSTALLED
+                                       transformers (run in .venv-hf445 for the pre-fix 4.45.2 Trainer)
 """
 from __future__ import annotations
 
@@ -16,7 +18,16 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("report")
     e = sub.add_parser("export")
     e.add_argument("out")
+    g = sub.add_parser("legacy-ga")
+    g.add_argument("out")
     a = p.parse_args(argv)
+
+    if a.cmd == "legacy-ga":
+        from .scenarios import legacy_ga_panel
+
+        with open(a.out, "w") as f:
+            json.dump(legacy_ga_panel(), f)
+        return 0
 
     from .scenarios import export
 
