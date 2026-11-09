@@ -63,7 +63,8 @@ const TEX = {
 };
 
 const fmt = (x: number, d = 2) => x.toFixed(d);
-const clean = (title: string) => title.replace(/^Emulation: /, "");
+// drop the "Emulation: " prefix (the edge print says it) and keep sentence case; library names stay lowercase
+const clean = (title: string) => title.replace(/^Emulation: (.)/, (_, c: string) => c.toUpperCase());
 const kindLabel = (k: string) =>
   k === "emulation" ? "Emulation" : k === "reference" ? "Reference" : "Real run";
 
@@ -155,9 +156,7 @@ async function main() {
   const stepNotes: Record<string, () => Annotation[]> = {
     "hf-ga": () => [],
     "hf445-ga": () => microbatchExtremes(panel("hf445-ga"), micro),
-    "emu-dropped": () => [
-      { rows: [micro, data.aggregation.lengths.length - 1], note: "never reached the optimizer" },
-    ],
+    "emu-dropped": () => [{ rows: [micro, data.aggregation.lengths.length - 1], note: "dropped: weight 0" }],
     "hf-ddp-per-rank": () => {
       const p = panel("hf-ddp-per-rank") as Panel & { ranks: number[][]; rankTargets: number[] };
       return p.ranks.map((seqs, r) => ({
