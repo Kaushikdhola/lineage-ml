@@ -138,17 +138,29 @@ def test_sft_matches_token_mean_across_accumulation(batch, unit, kw):
     assert _dev(res, unit, batch) < TOL
 
 
+# bf16 keeps 8 significant bits: unit roundoff u = 2^-8 ≈ 3.9e-3.
+BF16_U = 2.0**-8
+
+
+def bf16_within_rounding(got) -> bool:
+    """Rounding, not re-weighting. Per token: |w·N − 1| ≤ 2u (one bf16 rounding forward, one backward).
+    Per sequence: |mean(w·N) − 1| ≤ u. The bound does not shrink with the number of targets: the measured
+    errors within a sequence are correlated (a 6-target mean moved 2.09e-3, above the u/√6 = 1.6e-3 that
+    independent errors allow), so it uses the worst case, a mean no larger than one token's error. A 1%
+    re-weighting moves a sequence's mean by 1e-2, 2.6× this bound."""
+    per_token = max(abs(w - 1.0) for row in got for w in row)
+    per_seq = max(abs(sum(row) / len(row) - 1.0) for row in got)
+    return per_token <= 2 * BF16_U and per_seq <= BF16_U
+
+
 def test_sft_bf16_default_rounds_but_does_not_reweight(batch, unit):
-    """TRL defaults to bf16 mixed precision. Rounding scatters individual weights by a few 1e-3, but it
-    averages out within a sequence, so no sequence is re-weighted: a 1% re-weighting would move a
-    sequence's mean weight by 1e-2 and fail here."""
-    res = sft_trainer(batch, 2, 4, padding_free=True, bf16=True)
-    got = read(res.grads, unit, batch).normalized
-    d = _dev(res, unit, batch)
-    assert 1e-5 < d < 1e-2  # rounding is visible, and bounded
-    # no sequence is re-weighted: the shortest sequence averages only 2 rounding errors (each up to ~5e-3),
-    # so its mean can move by a few 1e-3; a 1% re-weighting moves it by 1e-2, twice this bound
-    assert max(abs(sum(row) / len(row) - 1.0) for row in got) < 5e-3
+    """TRL defaults to bf16 mixed precision. The weights are visibly rounded but stay within the bf16
+    bounds above, and the same check rejects a 1% re-weighting of the same measurement."""
+    got = read(sft_trainer(batch, 2, 4, padding_free=True, bf16=True).grads, unit, batch).normalized
+    assert max(abs(w - 1.0) for row in got for w in row) > 1e-5  # rounding is visible
+    assert bf16_within_rounding(got)
+    reweighted = [[w * 1.01 for w in row] if i == 0 else row for i, row in enumerate(got)]
+    assert not bf16_within_rounding(reweighted)
 
 
 @pytest.fixture(scope="module")

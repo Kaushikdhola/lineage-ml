@@ -45,6 +45,20 @@ def _sft_boundary_targets():
     sft.DataCollatorForLanguageModeling.torch_call = call
 
 
+def _sft_normaliser_1pct():
+    # SFT's token count 1% too small: every weight 1% too large (a re-weighting, not rounding)
+    from trl import SFTTrainer
+
+    orig = SFTTrainer.compute_loss
+
+    def compute(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        if num_items_in_batch is not None:
+            num_items_in_batch = num_items_in_batch * 0.99
+        return orig(self, model, inputs, return_outputs=return_outputs, num_items_in_batch=num_items_in_batch)
+
+    SFTTrainer.compute_loss = compute
+
+
 def _dpo_normalizer():
     # the loss averaged over all 2P rows instead of the P pairs
     from trl import DPOTrainer
@@ -97,6 +111,7 @@ FAULTS = {
     "ga-reverted": _ga_reverted,
     "label-smoothing-off": _smoothing_off,
     "sft-boundary-targets": _sft_boundary_targets,
+    "sft-normaliser-1pct": _sft_normaliser_1pct,
     "dpo-normalizer": _dpo_normalizer,
     "grpo-clip-removed": _grpo_clip_removed,
     "cache-never-created": _cache_never_created,
