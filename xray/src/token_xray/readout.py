@@ -120,3 +120,53 @@ def read(grads: dict[int, torch.Tensor], unit: dict[int, torch.Tensor], batch: T
         W.append(wr)
         C.append(cr)
     return XRay(weights=W, cosines=C, n_targets=batch.n_targets)
+
+
+# ── pair readout: several targets predicted from one input token ───────────
+#
+# Preference and RL trainers repeat the prompt in every row, so the prompt's last token predicts a
+# different first completion token in each row: one input id, several targets. In aggregation mode a
+# position's output depends only on its own embedding, so the unit gradient of "input a predicts b"
+# is the same wherever it occurs, and the gradient recorded at a is a linear combination of the unit
+# gradients of its targets. Solving that small least-squares problem recovers every weight exactly
+# (the unit gradients are linearly independent when the hidden size exceeds the number of targets).
+
+Pair = tuple[int, int]  # (input token id, target token id)
+
+
+def unit_pair_gradients(model, pairs: list[Pair]) -> dict[Pair, torch.Tensor]:
+    """d CE(target | input) / d(embedding output of input), each pair scored alone at position 0."""
+    pairs = list(dict.fromkeys(pairs))
+    ids = torch.tensor([[a] for a, _ in pairs])
+    emb = model.get_input_embeddings()(ids).detach().requires_grad_()
+    logits = model(inputs_embeds=emb).logits[:, 0]
+    F.cross_entropy(logits, torch.tensor([b for _, b in pairs]), reduction="sum").backward()
+    model.zero_grad(set_to_none=True)
+    return {p: emb.grad[k, 0].detach().clone() for k, p in enumerate(pairs)}
+
+
+@dataclass
+class PairRead:
+    weights: dict[Pair, float]
+    residual: float  # max over inputs of ||g − Σ w u|| / ||g||: 0 when the gradient is fully explained
+
+
+def read_pairs(grads: dict[int, torch.Tensor], unit: dict[Pair, torch.Tensor], pairs: list[Pair]) -> PairRead:
+    """CE weight of every (input, target) pair from the gradients recorded at each input token."""
+    by_input: dict[int, list[int]] = {}
+    for a, b in dict.fromkeys(pairs):
+        by_input.setdefault(a, []).append(b)
+    weights: dict[Pair, float] = {}
+    residual = 0.0
+    for a, targets in by_input.items():
+        U = torch.stack([unit[(a, b)] for b in targets], dim=1)  # (hidden, k)
+        if U.shape[1] > U.shape[0]:
+            raise ValueError(f"input {a} has more targets ({U.shape[1]}) than hidden dimensions ({U.shape[0]})")
+        g = grads.get(a, torch.zeros(U.shape[0], dtype=U.dtype))
+        w = torch.linalg.lstsq(U, g.unsqueeze(1)).solution[:, 0]
+        gn = float(g.norm())
+        if gn > 0:
+            residual = max(residual, float((g - U @ w).norm()) / gn)
+        for b, wb in zip(targets, w.tolist()):
+            weights[(a, b)] = wb
+    return PairRead(weights=weights, residual=residual)
