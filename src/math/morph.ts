@@ -25,6 +25,10 @@ export class FormulaStage {
     private readonly bus?: SymbolBus,
   ) {
     root.classList.add("formula-stage");
+    // refit when the stage changes width (rotation, sidebar, resize)
+    new ResizeObserver(() => this.current && this.fit(this.current)).observe(root);
+    // KaTeX fonts change a formula's width once they load
+    void document.fonts?.ready.then(() => this.current && this.fit(this.current));
     if (bus) {
       root.addEventListener("pointerover", (e) => {
         const tok = (e.target as HTMLElement).closest<HTMLElement>("[data-tok]");
@@ -46,6 +50,23 @@ export class FormulaStage {
     this.root.replaceChildren();
     this.current = this.layer(tex);
     this.root.append(this.current);
+    this.fit(this.current);
+  }
+
+  /**
+   * Shrinks a formula that is wider than the stage (long objectives on a phone) so it reads whole
+   * instead of hiding behind a sideways scroll. Never below 70%; anything wider still scrolls.
+   */
+  private fit(layer: HTMLElement): void {
+    layer.style.fontSize = "";
+    const avail = this.root.clientWidth;
+    if (!avail) return;
+    // KaTeX has a few fixed-size parts, so width is not exactly proportional: converge in a few passes
+    let scale = 1;
+    for (let i = 0; i < 4 && this.root.scrollWidth > avail && scale > 0.7; i++) {
+      scale = Math.max(0.7, (scale * (avail - 2)) / this.root.scrollWidth);
+      layer.style.fontSize = `${scale.toFixed(3)}em`;
+    }
   }
 
   /** Morphs to a new formula. Calls are queued so rapid navigation never tears. */
@@ -65,6 +86,7 @@ export class FormulaStage {
     const next = this.layer(tex);
     next.classList.add("morph-in");
     this.root.append(next);
+    this.fit(next);
     this.current = next;
 
     const newToks = [...next.querySelectorAll<HTMLElement>("[data-tok]")];
