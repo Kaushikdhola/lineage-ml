@@ -3,7 +3,7 @@ description: Add real TRL runs (SFT packing / padding-free, DPO, GRPO with scrip
 ---
 
 Read CLAUDE.md, xray/README.md and docs/DESIGN.md. Work in `xray/` with `.venv` (install `trl` and CPU
-torch if missing). Every new scenario must be a REAL run of the unmodified library, use the existing probe
+torch if missing). Every new scenario must be a REAL run of the installed library, use the existing probe
 and readout, and come with tests that pass on correct behaviour and fail on an injected fault.
 
 1. **SFT, padding-free / packing.** Run `trl.SFTTrainer` on the probe with `padding_free=True` (and with
@@ -21,5 +21,8 @@ and readout, and come with tests that pass on correct behaviour and fail on an i
    give the story a film for each that is worth showing (Plate numbers continue; edge says Real run).
 5. Run `node scripts/xray.mjs test` and `npm run ci`. Then plant one fault per new scenario and show it is caught.
 
-Report: a table of scenario → result → library version. Flag anything that looks like a library bug as a
-candidate and stop before writing any public claim about it.
+Report: a table of scenario → result → library version. Anything that looks like a library bug is a
+candidate: check upstream for existing reports (as `/report-finding` does) before any public claim, call it
+a candidate on the page until then, and never file or comment upstream (hard stop).
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.

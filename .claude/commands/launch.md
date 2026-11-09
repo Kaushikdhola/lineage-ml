@@ -4,15 +4,19 @@ description: Final checks, deploy, publish the package, and draft the launch pos
 
 1. `npm run ci` and `node scripts/xray.mjs test` must pass. `token-xray report` must match `public/xray/data.json`
    (re-export if the installed versions changed, and say so).
-2. Confirm docs/DEPLOY.md steps 1–6 are done (ask me). Push to `main`; watch the Deploy workflow; open the
-   live `/story/` and check headers with `curl -sI`, no console errors, films render, mobile works.
-3. **Package.** Build `xray/` with `python -m build`; check the README renders; publish to TestPyPI first,
-   then PyPI with a token I provide via an environment variable (never write it to disk or the repo).
-   Confirm `pip install token-xray` works in a fresh venv and the README example runs.
+2. Check docs/DEPLOY.md steps 1–6 against the repository and log any gap in docs/DECISIONS.md. Pushing and
+   deploying are hard stops: prepare everything, then print the exact commands for me to run
+   (`git push origin main`, then watch the Deploy workflow). Once the site is live, a later run of this
+   command opens the live `/story/` and checks headers with `curl -sI`, no console errors, films render,
+   mobile works.
+3. **Package.** Build `xray/` with `python -m build` and check the README renders. Publishing is a hard
+   stop: print the exact `twine upload` commands for TestPyPI, then PyPI, for me to run with a token from an
+   environment variable (never written to disk or the repo). After I have run them, confirm
+   `pip install token-xray` works in a fresh venv and the README example runs.
    Only after `twine upload` succeeds AND `pip install token-xray` works in a clean venv: switch the install
    command on the story page (`story/index.html`, `.install`) and in `xray/README.md` from
    `pip install "git+https://github.com/kaushikdhola/lineage-ml#subdirectory=xray"` to `pip install token-xray`. Until then, keep the git install.
-4. **Posts** (drafts only, I post them):
+4. **Posts.** Posting is a hard stop: write the drafts to `docs/launch/` and I post them.
    - Reddit r/MachineLearning: title starts with `[P]`, plain and specific, no hype; body explains the
      method in 4 sentences, links the story, the repo and the package, and clearly separates real runs,
      emulations and the known issue (huggingface/transformers#50419). Check the subreddit's current rules first.
@@ -20,3 +24,5 @@ description: Final checks, deploy, publish the package, and draft the launch pos
    - LinkedIn: hook first, under 1,300 characters, a 30–40 second screen recording of the hero flicker,
      the accumulation scrolly and the GRPO morph; link in the first comment.
      Every number in a post must come from `public/xray/data.json` or the tests.
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.

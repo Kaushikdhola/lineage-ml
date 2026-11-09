@@ -9,8 +9,9 @@ Read CLAUDE.md "Design direction". Use the **frontend-design** skill for directi
 **threejs-** skills for implementation (fundamentals, materials, shaders, postprocessing,
 interaction, performance).
 
-1. Before coding, propose 3 visual metaphors that make the math itself visible (not decoration).
-   For each: what every token in the formula becomes in the scene. Pick the strongest and say why.
+1. Before coding, write down 3 visual metaphors that make the math itself visible (not decoration).
+   For each: what every token in the formula becomes in the scene. Pick the strongest by docs/DESIGN.md,
+   log the choice and the alternatives in docs/DECISIONS.md, and build it.
 2. Implement in `src/scene/` as a class with `update(...)`, `dispose()`, lazy-loaded via dynamic
    import. Every number comes from `src/core`. Bind every token in the formula to a scene object
    through `SymbolBus`, both directions (hover object → symbol lights; hover symbol → object lights).
@@ -18,3 +19,5 @@ interaction, performance).
 4. Reduced-motion and low-power fallback; dispose all GPU resources on navigation; 60 fps target.
 5. Register it as the probe for the formula(s) in `src/ui/probes.ts`. Run `npm run ci`.
    Then run `/qa` on it.
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.

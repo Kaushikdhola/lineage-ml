@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm ci *)",
+      "Bash(npx prettier *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npx vite *)",
+      "Bash(node scripts/*)",
+      "Bash(.venv/bin/python *)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/torchrun *)",
+      "Bash(.venv-hf445/bin/python *)",
+      "Bash(sed *)",
+      "Bash(cmp *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git stash *)",
+      "Bash(git switch *)",
+      "Bash(git branch *)",
+      "Bash(git checkout -- tests/fixtures/*)",
+      "Bash(git restore tests/fixtures/*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:huggingface.co)",
+      "WebFetch(domain:pytorch.org)",
+      "WebFetch(domain:arxiv.org)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(rm -rf *)",
+      "Bash(npm publish *)",
+      "Bash(npm run deploy *)",
+      "Bash(npx wrangler *)",
+      "Bash(wrangler *)",
+      "Bash(twine *)",
+      "Bash(.venv/bin/twine *)",
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(gh repo *)",
+      "Bash(gh release *)"
+    ]
+  }
+}

@@ -12,5 +12,8 @@ senior research scientist hunting for anything that would embarrass the author i
 - oracle references that are not truly independent of the TypeScript implementation
 - any claim in README or UI copy that overstates what the project does
 
-It must quote the exact text for each issue and propose a correction. Show me the report, then fix
-what I approve and run `npm run ci`.
+It must quote the exact text for each issue and propose a correction. Save the report verbatim to
+`docs/redteam/<date>-atlas.md` and commit it on its own. Then fix every issue by the Autonomy rules; log
+anything you decide not to fix in docs/DECISIONS.md with the reason.
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.

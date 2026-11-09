@@ -21,3 +21,5 @@ parameter gradients by the all-reduce). So for this relation read the weights fr
    per-rank token means) must fail.
 4. Export and add one film to the accumulation chapter if the result is worth showing.
    Run `node scripts/xray.mjs test` and `npm run ci`.
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.

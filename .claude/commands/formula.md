@@ -16,6 +16,9 @@ Follow CLAUDE.md and CONTRIBUTING.md exactly. For each formula:
    (marked `·`): `compute: null` with a `computeNote`.
 5. Update the status marks in `docs/ROADMAP.md`.
 
-Work in batches of at most 8 formulas. After each batch run `npm run ci`, fix everything, and show me
-the `npm run atlas:check` report plus a list of anything you were unsure about (notation choices,
-contested history, ambiguous sources). Do not continue to the next batch until I say so.
+Work in batches of at most 8 formulas. After each batch run `npm run ci` and fix everything. Log anything
+you were unsure about (notation choices, contested history, ambiguous sources) in docs/DECISIONS.md with
+the choice you made, commit the batch, and continue with the next one. The final report includes the
+`npm run atlas:check` summary.
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.

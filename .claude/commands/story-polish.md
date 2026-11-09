@@ -19,3 +19,5 @@ new colours, fonts or decorative motion.
 6. **Performance.** Lighthouse-style check: the story's JS stays under 40 kB gzipped excluding KaTeX;
    films redraw only on resize or data change.
    Run `npm run ci`, then `/qa` with scope `/story/`.
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.

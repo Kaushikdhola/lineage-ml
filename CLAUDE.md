@@ -19,6 +19,21 @@ would send this to a colleague") and curious practitioners on LinkedIn.
    comments, docs, commit messages or PR descriptions in this repository.
 6. **`npm run ci` passes before every commit.**
 
+## Autonomy
+
+- Run every slash command to completion without asking me. When a choice comes up, pick what best fits
+  docs/PLAN.md and docs/DESIGN.md (on a tie, the more conservative and more honest option) and log it in
+  docs/DECISIONS.md: date, command, decision, alternatives, how to revert.
+- "Not done" is not an ending. Finish in-scope leftovers (README, tests, copy, layout bugs) before reporting.
+- End every command by running `npm run ci` and `node scripts/xray.mjs test`, then commit, one commit per
+  logical change, following non-negotiable 5.
+- Run Python without env-var prefixes (the package is installed editable): use `node scripts/xray.mjs` or
+  `cd xray && ../.venv/bin/python -m pytest ...`, so the allowlist in `.claude/settings.json` matches.
+- If something can't be fixed in 3 attempts: don't commit that part, log it under "Blocked" in
+  docs/DECISIONS.md, and carry on with the rest.
+- The only hard stops: git push, deploy, PyPI publish, posting anywhere, and any action on GitHub upstream
+  (issues, PRs, comments). Prepare everything, then stop and print the exact command for me to run.
+
 ## Architecture
 
 `src/core` math → `src/atlas` data and graph → `src/math` KaTeX, tokens, morph, symbol bus →

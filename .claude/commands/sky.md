@@ -15,4 +15,7 @@ the continuous camera move into a formula. Use the **frontend-design** and **thr
 - Performance: instanced stars, one draw call for filaments, ≤ 2 ms per frame on a laptop.
 - Mobile: a 2D constellation fallback with the same navigation.
 
-Propose the direction first (3 options), then build, then run `/qa`.
+Write down 3 directions, pick one by docs/PLAN.md and docs/DESIGN.md, log the choice and the alternatives
+in docs/DECISIONS.md, then build, then run `/qa`.
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.

@@ -13,3 +13,5 @@ ppo-clip, dpo, pass-hat-k).
    clipping, legibility at phone size, motion) and as an ML researcher (is the math correct and
    honestly labelled, does the scene show what the formula says).
 4. Fix the issues and repeat. Max 3 rounds. End with a table: issue → fix → verified.
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.

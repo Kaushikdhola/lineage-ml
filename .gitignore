@@ -2,7 +2,7 @@ node_modules
 dist
 coverage
 .venv
-.venv-hf445
+.venv-hf445/
 .wrangler
 __pycache__
 *.pyc

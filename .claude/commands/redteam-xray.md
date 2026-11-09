@@ -15,5 +15,9 @@ author on Reddit or X:
 - the historical bug descriptions (dates, versions, which project, which mechanism)
 - anything that overstates novelty or impact
 
-It must quote the exact text for each issue and propose corrected wording. Show me the report, fix what I
-approve, run `npm run ci` and `node scripts/xray.mjs test`.
+It must quote the exact text for each issue and propose corrected wording. Save the report verbatim to
+`docs/redteam/<date>.md` and commit it on its own. Then fix every issue, choosing between the reviewer's
+proposals and alternatives by the Autonomy rules; for anything you decide not to fix, or defer, log why in
+docs/DECISIONS.md (or docs/ROADMAP.md for deferred method work).
+
+**Finish.** Follow the Autonomy rules in CLAUDE.md. Update the docs and README this command touched, run `npm run ci` and `node scripts/xray.mjs test`, commit (one commit per logical change, no attribution lines), and print a report of 5 lines or fewer.
