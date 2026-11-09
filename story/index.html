@@ -91,6 +91,16 @@
                 bug that transformers fixed in October 2024, reproduced in plain PyTorch.
               </p>
             </li>
+            <li class="step" data-step="hf-ddp-per-rank">
+              <h3>Split across two processes, average on each</h3>
+              <p>
+                The same twelve sequences on two data-parallel ranks, through the unmodified
+                <code>Trainer</code> under <code>torchrun</code>. With
+                <code>average_tokens_across_devices=False</code> each rank averages its own tokens and DDP
+                then averages the ranks, so the rank holding fewer tokens gets louder. The default shares the
+                token count across ranks and the film goes flat again. This is a real run.
+              </p>
+            </li>
             <li class="step" data-step="emu-dropped">
               <h3>Keep only the first micro-batch</h3>
               <p>

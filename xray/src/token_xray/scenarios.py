@@ -40,11 +40,12 @@ def aggregation_panels(lengths=SITE_LENGTHS, micro=MICRO) -> list[dict]:
     unit = unit_gradients(build_probe(b.vocab_size), b)
     k = len(lengths) // micro
 
-    def panel(pid, title, kind, res, want, note, source=None):
+    def panel(pid, title, kind, res, want, note, source=None, **extra):
         x = read(res.grads, unit, b)
         got = x.normalized
         dev = max(abs(g - w) for gr, wr in zip(got, want) for g, w in zip(gr, wr))
         return {
+            **extra,
             "id": pid,
             "title": title,
             "kind": kind,
@@ -56,6 +57,19 @@ def aggregation_panels(lengths=SITE_LENGTHS, micro=MICRO) -> list[dict]:
             "minCos": x.min_cos,
             "loggedLoss": res.logged_loss,
         }
+
+    def ddp_panel(avg: bool):
+        from .ddp import hf_trainer_ddp
+
+        run = hf_trainer_ddp(lengths, per_device_batch=len(lengths) // 2, average_tokens_across_devices=avg)
+        n = intended._targets(lengths)
+        rank_targets = [sum(n[i] for i in seqs) for seqs in run["seen"]]
+        title = f"transformers Trainer, 2 ranks, average_tokens_across_devices={avg}"
+        note = ("Default. The token count is shared across ranks, so the split changes nothing." if avg else
+                "Each rank averages its own tokens, then DDP averages the ranks: tokens on the rank with fewer "
+                "tokens get louder. Read from the all-reduced embedding parameter gradient.")
+        return panel(f"hf-ddp-{'avg' if avg else 'per-rank'}", title, "real", R.StepResult(grads=run["rows"]), tm,
+                     note, ranks=run["seen"], rankTargets=rank_targets)
 
     tm = intended.token_mean(lengths)
     return [
@@ -77,7 +91,38 @@ def aggregation_panels(lengths=SITE_LENGTHS, micro=MICRO) -> list[dict]:
               "https://arxiv.org/abs/2604.23747"),
         panel("emu-pad-eos", "Emulation: pad token = EOS", "emulation", R.emulate_pad_equals_eos(b), tm,
               "Masking every label equal to the pad id also removes the real end-of-sequence targets."),
+        ddp_panel(True),
+        ddp_panel(False),
     ]
+
+
+def ddp_section(lengths=SITE_LENGTHS) -> dict:
+    """Relation R2: weights for world size 1 and 2 (equal and uneven tokens per rank), and sampler padding."""
+    from .ddp import ddp_step
+
+    b = make_batch(lengths)
+    unit = unit_gradients(build_probe(b.vocab_size), b)
+    order = sorted(range(len(lengths)), key=lambda i: lengths[i])
+    splits = {"equal": [[1, 3, 6, 7], [0, 2, 4, 5, 8, 9, 10, 11]], "uneven": [order[:6], order[6:]]}
+
+    def dev(a, w):
+        return max(abs(x - y) for ra, rb in zip(a, w) for x, y in zip(ra, rb))
+
+    w1 = read(ddp_step(lengths, 1).rows["global_token_mean"], unit, b).normalized
+    cases = []
+    for name, split in splits.items():
+        r = ddp_step(lengths, 2, split=split)
+        for red, rows in r.rows.items():
+            cases.append({"split": name, "reduction": red, "rankTargets": r.local_targets,
+                          "maxDeviationFromWorld1": dev(read(rows, unit, b).normalized, w1)})
+    L11 = lengths[:11]
+    b11 = make_batch(L11)
+    rs = ddp_step(L11, 2, sampler=True, reductions=("global_token_mean",))
+    copies = [sum(x.count(i) for x in rs.assignment) for i in range(len(L11))]
+    w = read(rs.rows["global_token_mean"], unit_gradients(build_probe(b11.vocab_size), b11), b11).normalized
+    return {"cases": cases, "sampler": {"assignment": rs.assignment, "copies": copies,
+                                        "maxDeviationFromTokenMean": dev(w, intended.token_mean(L11)),
+                                        "maxDeviationFromMultiplicity": dev(w, intended.with_multiplicity(L11, copies))}}
 
 
 def leak_panels(lengths=LEAK_LENGTHS) -> list[dict]:
@@ -239,4 +284,5 @@ def export() -> dict:
         "aggregation": {"lengths": SITE_LENGTHS, "micro": MICRO, "panels": aggregation_panels()},
         "leak": {"lengths": LEAK_LENGTHS, "panels": leak_panels()},
         "trl": trl_section(),
+        "ddp": ddp_section(),
     }
