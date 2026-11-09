@@ -5,6 +5,9 @@ import { renderTex } from "../math/katex";
 import { FormulaStage } from "../math/morph";
 import { Film, type Annotation, type FilmSpec } from "./film";
 
+/** small deviations in scientific notation, so a 10⁻⁷ match never reads as 0.000 */
+const dev = (x: number) => (Math.abs(x) < 1e-3 ? x.toExponential(1) : fmt(x, 3));
+
 interface Panel {
   id: string;
   title: string;
@@ -78,7 +81,8 @@ function weightFilm(p: Panel, data: XrayData, plate: number, annotations: Annota
     annotations,
     tooltip: (r, c, v) =>
       `Sequence ${r + 1}, token ${c + 1}: weight ${fmt(v, 3)}×  (intended ${fmt(p.intended[r][c], 2)}×)`,
-    summary: `${clean(p.title)}. ${p.note} Largest deviation from the intended weights: ${fmt(p.maxDeviation, 3)}.`,
+    summary: `${clean(p.title)}. ${p.note} Largest deviation from the intended weights: ${dev(p.maxDeviation)}.`,
+    intended: p.intended,
   };
 }
 
@@ -133,7 +137,7 @@ async function main() {
   new Film(fig("hero")).show(weightFilm(heroPanel, data, 1, microbatchExtremes(heroPanel, micro)));
   caption(
     fig("hero"),
-    `One training step of the transformers ${heroPanel.versions.transformers} Trainer, the release before the October 2024 fix: twelve sequences in four micro-batches, every cell a token. Brightness is the gradient weight it received. The bands are the bug.`,
+    `The transformers ${heroPanel.versions.transformers} Trainer, before the October 2024 fix. Brightness is each token's gradient weight; the bands are the bug.`,
   );
 
   // chapter 1
@@ -170,7 +174,7 @@ async function main() {
     const avg = id === "hf-ddp-per-rank" ? panel("hf-ddp-avg") : null;
     caption(
       accFig,
-      `${kindLabel(p.kind)}: ${clean(p.title)}.${ranks ? ` Target tokens per rank: ${ranks.join(" and ")}.` : ""} Largest deviation from the equation: ${fmt(p.maxDeviation, 3)}.${avg ? ` With the default (True), measured on the same split: ${avg.maxDeviation.toExponential(1)}, flat again.` : ""}${
+      `${clean(p.title)}. Largest deviation: ${dev(p.maxDeviation)}.${ranks ? ` Tokens per rank: ${ranks.join(" and ")}.` : ""}${avg ? ` Default: ${avg.maxDeviation.toExponential(1)}.` : ""}${
         p.source ? ` <a href="${p.source}" rel="noopener" target="_blank">Source</a>` : ""
       }`,
     );
@@ -186,7 +190,11 @@ async function main() {
         .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
       if (visible) showStep((visible.target as HTMLElement).dataset.step!);
     },
-    { rootMargin: "-40% 0px -40% 0px", threshold: [0, 0.25, 0.5, 1] },
+    // on one column the sticky film fills the top of the screen, so a step activates once its text is below it
+    {
+      rootMargin: matchMedia("(max-width: 900px)").matches ? "-72% 0px -8% 0px" : "-40% 0px -40% 0px",
+      threshold: [0, 0.25, 0.5, 1],
+    },
   );
   document.querySelectorAll(".step").forEach((s) => io.observe(s));
 
@@ -197,7 +205,10 @@ async function main() {
   const left = panel("hf-left");
   const leftMean = left.weights.flat().reduce((s, x) => s + x, 0) / left.weights.flat().length;
   new Film(fig("hf-left")).show(weightFilm(left, data, 5, [{ note: `every token at ${fmt(leftMean)}×` }]));
-  caption(fig("hf-left"), `Left padding. ${left.note}`);
+  caption(
+    fig("hf-left"),
+    `Left padding: the pad before each shorter sequence predicts its first token, adding a target.`,
+  );
   const smooth = panel("hf-smoothing");
   new Film(fig("hf-smoothing")).show(
     weightFilm(smooth, data, 6, [{ note: `cosine ${smooth.minCos.toFixed(6)}, not a pure rescaling` }]),
@@ -205,7 +216,7 @@ async function main() {
   const smoothMean = smooth.weights.flat().reduce((a, b) => a + b, 0) / smooth.weights.flat().length;
   caption(
     fig("hf-smoothing"),
-    `Label smoothing 0.1, a declared configuration. On this untrained probe the predictions are near-uniform, so smoothing looks almost like a ${fmt(smoothMean, 2)}× rescale (cosine ${smooth.minCos.toFixed(7)}); on a trained model it changes the gradient's direction far more. The cosine flags it either way.`,
+    `Label smoothing 0.1: cosine ${smooth.minCos.toFixed(7)} flags it. Here nearly a ${fmt(smoothMean, 2)}× rescale (untrained probe).`,
   );
   const eos = panel("hf-pad-eos");
   const lastCols = eos.weights[0].length - 1;
@@ -214,7 +225,10 @@ async function main() {
       { rows: [0, 0], cols: [lastCols, lastCols], note: "end-of-sequence: weight 0" },
     ]),
   );
-  caption(fig("hf-pad-eos"), `Pad token set to EOS. ${eos.note}`);
+  caption(
+    fig("hf-pad-eos"),
+    `Pad token = EOS: the library collator masks every EOS target, so the model is never taught to stop.`,
+  );
 
   // chapter 5: leaks (Plates 8–11 from transformers, Plate 12 through TRL's SFTTrainer)
   const leakRow = document.querySelector<HTMLElement>("[data-leaks]")!;
@@ -251,7 +265,7 @@ function leakFilm(f: HTMLElement, lp: LeakPanel, plate: number) {
   });
   caption(
     f,
-    `${lp.title}. ${leaks ? `Leaks up to ${fmt(lp.maxLeak * 100, 1)}% on this untrained probe.` : "No leak."} ${lp.note}`,
+    `${lp.title}. ${leaks ? `Leaks up to ${fmt(lp.maxLeak * 100, 1)}% (untrained probe).` : "No leak."}`,
   );
 }
 
@@ -275,10 +289,11 @@ function setupTrainers(data: XrayData, fig: (id: string) => HTMLElement) {
     tooltip: (r, c, v) =>
       `${dpo.rowLabels[r]}, token ${c + 1}: ${v.toExponential(3)} (equation ${dpo.intended[r][c].toExponential(3)})`,
     summary: `${dpo.title}: per-token weights for three preference pairs.`,
+    intended: dpo.intended,
   });
   caption(
     fig("trl-dpo"),
-    `${dpo.title}. ${dpo.note} The margin, and so each weight's size, depends on the model's state: these values describe this untrained probe, while the closed form they match holds for any model. Matches it to ${sci(dpo.maxRelDeviation)} (relative).`,
+    `One weight per answer, β·σ(−βΔ)/P: up for chosen, down for rejected (untrained probe). Matches to ${sci(dpo.maxRelDeviation)}.`,
   );
 
   const run = data.trl.grpo.find((g) => g.id === "grpo-default")!;
@@ -301,15 +316,16 @@ function setupTrainers(data: XrayData, fig: (id: string) => HTMLElement) {
       tooltip: (r, c, v) =>
         `Answer ${r + 1}, token ${c + 1}: ${v.toExponential(3)}, ratio ${fmt(st.ratios[r][c], 3)} (equation ${st.intended[r][c].toExponential(3)})`,
       summary: `GRPOTrainer step ${st.step}: per-token weights for four scripted answers.`,
+      intended: st.intended,
     });
   });
   caption(
     fig("trl-grpo-1"),
-    `First step. The installed default loss type is ${run.config.loss_type}: every ratio is 1 and each token gets its answer's advantage divided by the batch's total completion tokens (here one group). TRL's "dapo" is DAPO's token-level normalisation only, with symmetric clipping ε = ${run.config.epsilon}. Matches the closed form to ${sci(s1.maxRelDeviation)}.`,
+    `Step 1, default loss ${run.config.loss_type}: ratios are 1, so each token gets its answer's advantage over all tokens. Matches to ${sci(s1.maxRelDeviation)}.`,
   );
   caption(
     fig("trl-grpo-2"),
-    `Second step on the same answers (num_iterations ${run.config.num_iterations}). Ratios now run from ${fmt(lo, 2)} to ${fmt(hi, 2)}; ${s2.clipped} tokens moved past 1 ± ${run.config.epsilon} on the side their advantage pushes and received exactly zero, as the clipped objective prescribes. Which tokens clip depends on how this untrained probe moved in one step. Matches to ${sci(s2.maxRelDeviation)}.`,
+    `Step 2: ratios ${fmt(lo, 2)}–${fmt(hi, 2)}; the ${s2.clipped} tokens clipped at 1 ± ${run.config.epsilon} get exactly 0 (untrained probe). Matches to ${sci(s2.maxRelDeviation)}.`,
   );
 }
 
@@ -353,10 +369,10 @@ function setupObjectives(figEl: HTMLElement) {
     });
     note.textContent =
       objective === "grpo"
-        ? `Each answer's loss is averaged over its own tokens, so every token of the ${lengths[LONG]}-token wrong answer is pushed ${fmt(ratio, 1)}× less than a token of the ${lengths[SHORT]}-token wrong one. Long wrong answers get off lightly: the length bias described by Liu et al. (2025).`
+        ? `Averaged per answer: the ${lengths[LONG]}-token wrong answer is pushed ${fmt(ratio, 1)}× less per token (Liu et al., 2025).`
         : objective === "dr-grpo"
-          ? "Dr. GRPO divides by a constant instead of each answer's length, and drops the division by the rewards' standard deviation. Every token of a wrong answer is pushed equally, whatever its length."
-          : "DAPO averages over all tokens in the group rather than per answer, so long answers lose their discount. It keeps the standard-deviation normalisation.";
+          ? "A constant divisor and no std scaling: every token of a wrong answer is pushed equally, whatever its length."
+          : "One divisor for all tokens in the group, so long answers lose their discount; the std scaling stays.";
   };
 
   document.querySelectorAll<HTMLButtonElement>("[data-objective]").forEach((b) =>

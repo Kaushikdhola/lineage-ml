@@ -19,7 +19,11 @@ export interface FilmSpec {
   tooltip?: (r: number, c: number, v: number) => string;
   square?: boolean; // matrix films: square cells
   summary: string; // accessible description
+  intended?: number[][]; // what the equation says, per cell (adds a column to the screen-reader table)
 }
+
+const meanOf = (r: number[]) => r.reduce((a, b) => a + b, 0) / r.length;
+const num = (x: number) => (x !== 0 && Math.abs(x) < 0.01 ? x.toExponential(2) : x.toFixed(3));
 
 const FILM = [13, 25, 34];
 const BONE = [238, 243, 241];
@@ -64,6 +68,7 @@ export class Film {
   private svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   private edge = document.createElement("div");
   private tip = document.createElement("div");
+  private table = document.createElement("table");
   private stage = document.createElement("div");
   private spec: FilmSpec | null = null;
   private geom = { cell: 8, rowH: 8, gap: 2, padX: 20, padY: 30, labelW: 0 };
@@ -77,7 +82,8 @@ export class Film {
     this.svg.classList.add("pencil");
     this.svg.setAttribute("aria-hidden", "true");
     this.canvas.setAttribute("role", "img");
-    this.stage.append(this.edge, this.canvas, this.svg, this.tip);
+    this.table.className = "sr-only";
+    this.stage.append(this.edge, this.canvas, this.svg, this.tip, this.table);
     host.prepend(this.stage);
     this.ro = new ResizeObserver(() => this.draw());
     this.ro.observe(this.stage);
@@ -90,7 +96,27 @@ export class Film {
     this.spec = spec;
     this.edge.textContent = spec.edge;
     this.canvas.setAttribute("aria-label", spec.summary);
+    this.describe(spec);
     this.draw();
+  }
+
+  /** A visually hidden table of each row's mean value, for screen readers (not for matrix films). */
+  private describe(s: FilmSpec): void {
+    if (s.square) {
+      this.table.replaceChildren();
+      return;
+    }
+    const head = `<tr><th scope="col">Row</th><th scope="col">Tokens</th><th scope="col">Mean weight, measured</th>${
+      s.intended ? '<th scope="col">Mean weight, intended</th>' : ""
+    }</tr>`;
+    const body = s.rows
+      .map((r, i) => {
+        const label = s.rowLabels?.[i] ?? `Sequence ${i + 1}`;
+        const want = s.intended ? `<td>${num(meanOf(s.intended[i]))}</td>` : "";
+        return `<tr><th scope="row">${label}</th><td>${r.length}</td><td>${num(meanOf(r))}</td>${want}</tr>`;
+      })
+      .join("");
+    this.table.innerHTML = `<caption>${s.edge.replace(/\s{2,}/g, ", ")}: mean weight per row</caption><thead>${head}</thead><tbody>${body}</tbody>`;
   }
 
   private draw(): void {

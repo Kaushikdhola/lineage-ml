@@ -56,6 +56,17 @@ code {
   font-family: var(--mono);
   font-size: 0.88em;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 :focus-visible {
   outline: 3px solid var(--pencil);
   outline-offset: 3px;
@@ -135,6 +146,8 @@ p {
   border-radius: 3px;
   font-size: 0.92rem;
   user-select: all;
+  max-width: 100%;
+  overflow-wrap: break-word; /* the URL wraps at its <wbr> points; it still selects as one block */
 }
 
 /* plates: a film on the lightbox diffuser */
@@ -260,22 +273,10 @@ h1 .nowrap {
 .lit .plate-hero .pencil-line {
   animation: draw 0.9s cubic-bezier(0.6, 0, 0.3, 1) 1.3s both;
 }
-.plate-hero .pencil-lead {
-  stroke-width: 2;
-}
-h1 .nowrap {
-  white-space: nowrap;
-}
-.pencil-note {
+.plate-hero .pencil-note {
   opacity: 0;
 }
-.lit .plate-hero .pencil-lead {
-  stroke-width: 2;
-}
-h1 .nowrap {
-  white-space: nowrap;
-}
-.pencil-note {
+.lit .plate-hero .pencil-note {
   animation: appear 0.4s ease 2s forwards;
 }
 @keyframes appear {
@@ -309,6 +310,8 @@ main {
   padding: clamp(56px, 10vh, 120px) 0;
   border-top: 1px solid var(--rule);
   display: grid;
+  /* one column that may shrink below its content's min-content width (equations, code, film rows) */
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
 }
 .chapter > .plate,
@@ -335,18 +338,15 @@ main {
 }
 .plate-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 22px;
 }
 .leak-row {
   /* five leak matrices fit one row at full width */
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
 }
 .plate.small .pencil-lead {
   stroke-width: 2;
-}
-h1 .nowrap {
-  white-space: nowrap;
 }
 .pencil-note {
   font-size: 22px;
@@ -515,7 +515,7 @@ h1 .nowrap {
 
 @media (max-width: 900px) {
   .hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     min-height: auto;
   }
   .scrolly-body {
@@ -549,11 +549,8 @@ h1 .nowrap {
   .slider span {
     grid-column: 1 / -1;
   }
-  .pencil-lead {
-    stroke-width: 2;
-  }
-  h1 .nowrap {
-    white-space: nowrap;
+  .slider input {
+    height: 44px; /* a thumb-sized hit area around the native track */
   }
   .pencil-note {
     font-size: 21px;
@@ -569,13 +566,7 @@ h1 .nowrap {
   .plate-hero .film {
     filter: none;
   }
-  .plate-hero .pencil-lead {
-    stroke-width: 2;
-  }
-  h1 .nowrap {
-    white-space: nowrap;
-  }
-  .pencil-note {
+  .plate-hero .pencil-note {
     opacity: 1;
   }
   .step {
