@@ -39,6 +39,11 @@ npm run verify
 echo "→ token-xray: CPU PyTorch, transformers and TRL in .venv (a few minutes the first time)"
 .venv/bin/pip install -q torch --index-url https://download.pytorch.org/whl/cpu
 .venv/bin/pip install -q -e "xray[dev,trl]"
+
+echo "→ token-xray: transformers 4.45.2 (before the Oct 2024 accumulation fix) in .venv-hf445, for the hero plate"
+[ -x .venv-hf445/bin/python ] || "$PY" -m venv .venv-hf445
+.venv-hf445/bin/pip install -q --upgrade pip
+.venv-hf445/bin/pip install -q -r xray/requirements-hf445.txt
 node scripts/xray.mjs test
 
 echo ""

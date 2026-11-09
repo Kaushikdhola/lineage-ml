@@ -139,10 +139,16 @@ def test_sft_matches_token_mean_across_accumulation(batch, unit, kw):
 
 
 def test_sft_bf16_default_rounds_but_does_not_reweight(batch, unit):
-    """TRL defaults to bf16 mixed precision: weights carry ~1e-3 of rounding, nowhere near a re-weighting."""
+    """TRL defaults to bf16 mixed precision. Rounding scatters individual weights by a few 1e-3, but it
+    averages out within a sequence, so no sequence is re-weighted: a 1% re-weighting would move a
+    sequence's mean weight by 1e-2 and fail here."""
     res = sft_trainer(batch, 2, 4, padding_free=True, bf16=True)
+    got = read(res.grads, unit, batch).normalized
     d = _dev(res, unit, batch)
-    assert 1e-5 < d < 2e-2
+    assert 1e-5 < d < 1e-2  # rounding is visible, and bounded
+    # no sequence is re-weighted: the shortest sequence averages only 2 rounding errors (each up to ~5e-3),
+    # so its mean can move by a few 1e-3; a 1% re-weighting moves it by 1e-2, twice this bound
+    assert max(abs(sum(row) / len(row) - 1.0) for row in got) < 5e-3
 
 
 @pytest.fixture(scope="module")
@@ -155,6 +161,61 @@ def test_sft_packed_documents_do_not_leak(leak_batch, kw):
     assert max_leak(sft_leak_matrix(leak_batch, **kw)) == 0.0
 
 
+def test_sft_leak_control_detects_a_collator_that_does_not_reset_positions(leak_batch, monkeypatch):
+    """Negative control: with position_ids that run on across documents, the same harness must leak."""
+    import trl.trainer.sft_trainer as sft
+
+    orig = sft.DataCollatorForLanguageModeling.torch_call
+
+    def no_reset(self, examples):
+        out = orig(self, examples)
+        n = out["position_ids"].shape[1]
+        out["position_ids"] = torch.arange(n).unsqueeze(0).expand_as(out["position_ids"]).clone()
+        return out
+
+    monkeypatch.setattr(sft.DataCollatorForLanguageModeling, "torch_call", no_reset)
+    assert max_leak(sft_leak_matrix(leak_batch)) > 1e-3
+
+
+# ── padding sink and identifiability ───────────────────────────────────────
+
+
+def test_padding_sink_catches_a_loss_on_positions_after_eos():
+    """Planted: a Dr. GRPO-style loss (constant normaliser) that also scores the EOS padding (EOS -> EOS).
+    The real tokens' weights are unchanged, so only the padding sink can reveal it."""
+    from token_xray.trl_runners import EOS_ID
+
+    def run(score_padding: bool):
+        m = build_probe(12)
+        rows = [[1, 2, 3, EOS_ID, EOS_ID], [4, 5, EOS_ID, EOS_ID, EOS_ID]]  # completions padded with EOS
+        real = [3, 2]  # scored positions per row (up to and including the prediction of the first EOS)
+        with recording(m) as rec:
+            ids = torch.tensor(rows)
+            logp = torch.log_softmax(m(input_ids=ids).logits[:, :-1], -1).gather(2, ids[:, 1:, None])[..., 0]
+            mask = torch.zeros_like(logp)
+            for i, n in enumerate(real):
+                mask[i, : (logp.shape[1] if score_padding else n)] = 1
+            (-(logp * mask).sum() / (2 * 8)).backward()  # constant normaliser, as dr_grpo
+        return rec
+
+    clean, faulty = run(False), run(True)
+    for t in clean.grads:  # identical weights on every real token
+        assert torch.allclose(clean.grads[t], faulty.grads[t], atol=1e-15)
+    assert clean.pad_sink == 0.0
+    assert faulty.pad_sink > 1e-3
+
+
+def test_pair_readout_refuses_unidentifiable_systems():
+    """With hidden size h the final RMSNorm leaves h - 1 directions: h targets per input must be refused."""
+    m = build_probe(40, hidden_size=16)
+    pairs = [(1, b) for b in range(2, 18)]  # 16 targets for one input
+    with pytest.raises(ValueError, match="identifies at most 15"):
+        read_pairs({1: torch.zeros(16, dtype=torch.float64)}, unit_pair_gradients(m, pairs), pairs)
+    ok = pairs[:4]
+    pr = read_pairs({1: torch.zeros(16, dtype=torch.float64)}, unit_pair_gradients(m, ok), ok)
+    assert 1.0 <= pr.cond < 10
+
+
 # ── DPO ─────────────────────────────────────────────────────────────────────
 
 
@@ -164,15 +225,16 @@ def test_dpo_trainer_applies_the_sigmoid_closed_form():
     assert res["loss_type"] == ["sigmoid"]
     rows = [pb.pairs(k, pb.prompts[k // 2]) for k in range(len(pb.completions))]
     allp = [p for r in rows for p in r]
-    pr = read_pairs(res["grads"], unit_pair_gradients(build_probe(pb.vocab_size), allp), allp)
+    pr = read_pairs(res["grads"], unit_pair_gradients(pb.probe(), allp), allp)
     got = [[pr.weights[p] for p in r] for r in rows]
     ch, rj = intended.dpo_sigmoid([len(c) for c in pb.completions[0::2]], [len(c) for c in pb.completions[1::2]],
                                   res["deltas"], 0.1)
     want = [x for pair in zip(ch, rj) for x in pair]
     scale = max(abs(w) for r in want for w in r)
     assert max(abs(g - w) for gr, wr in zip(got, want) for g, w in zip(gr, wr)) < REL * scale
-    assert pr.residual < 1e-5
+    assert pr.residual < 1e-5 and pr.cond < 10
     assert all(w > 0 for w in sum(want[0::2], [])) and all(w < 0 for w in sum(want[1::2], []))
+    assert res["pad_sink"] == 0.0  # padding and the EOS's own position received nothing
 
 
 # ── GRPO ────────────────────────────────────────────────────────────────────
@@ -189,7 +251,7 @@ def _grpo_check(loss_type=None, scale_rewards=None):
     scored = [len(c) for c in pb.completions]
     out = []
     for st in res["steps"]:
-        pr = read_pairs(st["grads"], unit_pair_gradients(probe_at(st["state"], pb.vocab_size), allp), allp)
+        pr = read_pairs(st["grads"], unit_pair_gradients(probe_at(st["state"], pb), allp), allp)
         got = [[pr.weights[p] for p in r] for r in rows]
         ratios = ratios_between(pb, st["state"], res["steps"][0]["state"])
         _, want = intended.group_policy_gradient(scored, GRPO_REWARDS, cfg["loss_type"], ratios=ratios,
@@ -198,6 +260,7 @@ def _grpo_check(loss_type=None, scale_rewards=None):
                                                  scale_rewards=cfg["scale_rewards"] != "none")
         scale = max(abs(w) for r in want for w in r)
         dev = max(abs(g - w) for gr, wr in zip(got, want) for g, w in zip(gr, wr))
+        assert st["pad_sink"] == 0.0 and pr.cond < 10
         out.append((dev / scale, pr.residual, sum(1 for r in want for w in r if w == 0.0), ratios))
     return cfg, out
 

@@ -48,15 +48,15 @@ interface XrayData {
   versions: Record<string, string>;
   aggregation: { lengths: number[]; micro: number; panels: Panel[] };
   leak: { lengths: number[]; panels: LeakPanel[] };
-  trl: { sft: { leaks: LeakPanel[] }; dpo: DpoPanel; grpo: GrpoRun[] };
+  trl: { sft: { leaks: LeakPanel[]; bf16Deviation: number }; dpo: DpoPanel; grpo: GrpoRun[] };
 }
 
 const t = String.raw;
 const TEX = {
   tokenMean: t`\mathcal{L} = \frac{1}{\tok{N}{N}} \sum_{t=1}^{N} \tok{lt}{\ell_t} \qquad \frac{\partial \mathcal{L}}{\partial \tok{lt}{\ell_t}} = \tok{N}{\frac{1}{N}}`,
-  grpo: t`\mathcal{L} = -\tok{norm}{\frac{1}{G}\sum_{i=1}^{G}\frac{1}{|o_i|}}\sum_{i,t} \tok{adv}{\hat{A}_i}\, \tok{ratio}{\rho_{i,t}}, \qquad \tok{adv}{\hat{A}_i} = \frac{\tok{centre}{r_i - \bar{r}}}{\tok{std}{\operatorname{std}(r)}}`,
-  "dr-grpo": t`\mathcal{L} = -\tok{norm}{\frac{1}{G\, L_{\max}}}\sum_{i,t} \tok{adv}{\hat{A}_i}\, \tok{ratio}{\rho_{i,t}}, \qquad \tok{adv}{\hat{A}_i} = \tok{centre}{r_i - \bar{r}}`,
-  dapo: t`\mathcal{L} = -\tok{norm}{\frac{1}{\sum_{i}|o_i|}}\sum_{i,t} \tok{adv}{\hat{A}_i}\, \tok{ratio}{\rho_{i,t}}, \qquad \tok{adv}{\hat{A}_i} = \frac{\tok{centre}{r_i - \bar{r}}}{\tok{std}{\operatorname{std}(r)}}`,
+  grpo: t`\mathcal{L} = -\frac{1}{G}\sum_{i=1}^{G}\tok{norm}{\frac{1}{|o_i|}}\sum_{t=1}^{|o_i|} \tok{adv}{\hat{A}_i}\, \tok{ratio}{\rho_{i,t}}, \qquad \tok{adv}{\hat{A}_i} = \frac{\tok{centre}{r_i - \bar{r}}}{\tok{std}{\operatorname{std}(r) + \varepsilon}}`,
+  "dr-grpo": t`\mathcal{L} = -\tok{norm}{\frac{1}{G\, L_{\max}}}\sum_{i=1}^{G}\sum_{t=1}^{|o_i|} \tok{adv}{\hat{A}_i}\, \tok{ratio}{\rho_{i,t}}, \qquad \tok{adv}{\hat{A}_i} = \tok{centre}{r_i - \bar{r}}`,
+  dapo: t`\mathcal{L} = -\tok{norm}{\frac{1}{\sum_{j}|o_j|}}\sum_{i=1}^{G}\sum_{t=1}^{|o_i|} \tok{adv}{\hat{A}_i}\, \tok{ratio}{\rho_{i,t}}, \qquad \tok{adv}{\hat{A}_i} = \frac{\tok{centre}{r_i - \bar{r}}}{\tok{std}{\operatorname{std}(r) + \varepsilon}}`,
 };
 
 const fmt = (x: number, d = 2) => x.toFixed(d);
@@ -121,16 +121,19 @@ async function main() {
     return r.json();
   });
   setVersions(data);
+  document
+    .querySelectorAll("[data-bf16]")
+    .forEach((el) => (el.textContent = data.trl.sft.bf16Deviation.toExponential(1)));
   const panel = (id: string) => data.aggregation.panels.find((p) => p.id === id)!;
   const fig = (id: string) => document.querySelector<HTMLElement>(`[data-film="${id}"]`)!;
   const micro = data.aggregation.micro;
 
-  // hero: the 2024 accumulation mechanism
-  const heroPanel = panel("emu-mean-of-means");
+  // hero: a real run of the Trainer released before the October 2024 accumulation fix
+  const heroPanel = panel("hf445-ga") as Panel & { versions: Record<string, string> };
   new Film(fig("hero")).show(weightFilm(heroPanel, data, 1, microbatchExtremes(heroPanel, micro)));
   caption(
     fig("hero"),
-    `One training step, twelve sequences, every cell a token. Brightness is the gradient weight it received. The bands are a bug.`,
+    `One training step of the transformers ${heroPanel.versions.transformers} Trainer, the release before the October 2024 fix: twelve sequences in four micro-batches, every cell a token. Brightness is the gradient weight it received. The bands are the bug.`,
   );
 
   // chapter 1
@@ -147,7 +150,7 @@ async function main() {
   const acc = new Film(accFig);
   const stepNotes: Record<string, () => Annotation[]> = {
     "hf-ga": () => [],
-    "emu-mean-of-means": () => microbatchExtremes(panel("emu-mean-of-means"), micro),
+    "hf445-ga": () => microbatchExtremes(panel("hf445-ga"), micro),
     "emu-dropped": () => [
       { rows: [micro, data.aggregation.lengths.length - 1], note: "never reached the optimizer" },
     ],
@@ -164,9 +167,10 @@ async function main() {
     acc.show(weightFilm(p, data, 3, stepNotes[id]()));
     acc.redraw();
     const ranks = (p as Panel & { rankTargets?: number[] }).rankTargets;
+    const avg = id === "hf-ddp-per-rank" ? panel("hf-ddp-avg") : null;
     caption(
       accFig,
-      `${kindLabel(p.kind)}: ${clean(p.title)}.${ranks ? ` Target tokens per rank: ${ranks.join(" and ")}.` : ""} Largest deviation from the equation: ${fmt(p.maxDeviation, 3)}.${
+      `${kindLabel(p.kind)}: ${clean(p.title)}.${ranks ? ` Target tokens per rank: ${ranks.join(" and ")}.` : ""} Largest deviation from the equation: ${fmt(p.maxDeviation, 3)}.${avg ? ` With the default (True), measured on the same split: ${avg.maxDeviation.toExponential(1)}, flat again.` : ""}${
         p.source ? ` <a href="${p.source}" rel="noopener" target="_blank">Source</a>` : ""
       }`,
     );
@@ -198,15 +202,19 @@ async function main() {
   new Film(fig("hf-smoothing")).show(
     weightFilm(smooth, data, 6, [{ note: `cosine ${smooth.minCos.toFixed(6)}, not a pure rescaling` }]),
   );
-  caption(fig("hf-smoothing"), `Label smoothing 0.1. ${smooth.note}`);
-  const eos = panel("emu-pad-eos");
+  const smoothMean = smooth.weights.flat().reduce((a, b) => a + b, 0) / smooth.weights.flat().length;
+  caption(
+    fig("hf-smoothing"),
+    `Label smoothing 0.1, a declared configuration. On this untrained probe the predictions are near-uniform, so smoothing looks almost like a ${fmt(smoothMean, 2)}× rescale (cosine ${smooth.minCos.toFixed(7)}); on a trained model it changes the gradient's direction far more. The cosine flags it either way.`,
+  );
+  const eos = panel("hf-pad-eos");
   const lastCols = eos.weights[0].length - 1;
-  new Film(fig("emu-pad-eos")).show(
+  new Film(fig("hf-pad-eos")).show(
     weightFilm(eos, data, 7, [
       { rows: [0, 0], cols: [lastCols, lastCols], note: "end-of-sequence: weight 0" },
     ]),
   );
-  caption(fig("emu-pad-eos"), `Pad token set to EOS. ${eos.note}`);
+  caption(fig("hf-pad-eos"), `Pad token set to EOS. ${eos.note}`);
 
   // chapter 5: leaks (Plates 8–11 from transformers, Plate 12 through TRL's SFTTrainer)
   const leakRow = document.querySelector<HTMLElement>("[data-leaks]")!;
@@ -241,7 +249,10 @@ function leakFilm(f: HTMLElement, lp: LeakPanel, plate: number) {
         : `Loss of document ${r + 1} → gradient into document ${c + 1}: ${fmt(v, 4)}`,
     summary: `${lp.title}. Largest cross-document gradient: ${fmt(lp.maxLeak, 4)} of the document's own.`,
   });
-  caption(f, `${lp.title}. ${leaks ? `Leaks up to ${fmt(lp.maxLeak * 100, 1)}%.` : "No leak."} ${lp.note}`);
+  caption(
+    f,
+    `${lp.title}. ${leaks ? `Leaks up to ${fmt(lp.maxLeak * 100, 1)}% on this untrained probe.` : "No leak."} ${lp.note}`,
+  );
 }
 
 /** Signed films: brightness is |weight| on a shared scale, a weight of exactly 0 stays dark. */
@@ -267,7 +278,7 @@ function setupTrainers(data: XrayData, fig: (id: string) => HTMLElement) {
   });
   caption(
     fig("trl-dpo"),
-    `${dpo.title}. ${dpo.note} Matches the closed form to ${sci(dpo.maxRelDeviation)} (relative).`,
+    `${dpo.title}. ${dpo.note} The margin, and so each weight's size, depends on the model's state: these values describe this untrained probe, while the closed form they match holds for any model. Matches it to ${sci(dpo.maxRelDeviation)} (relative).`,
   );
 
   const run = data.trl.grpo.find((g) => g.id === "grpo-default")!;
@@ -285,7 +296,7 @@ function setupTrainers(data: XrayData, fig: (id: string) => HTMLElement) {
       rows: st.weights,
       scale: signedScale(gmax),
       rowLabels: labels,
-      edge: `Plate ${14 + k}   Real run   GRPOTrainer, default loss (${run.config.loss_type}), step ${st.step}`,
+      edge: `Plate ${14 + k}   Real run   GRPOTrainer, default loss (${run.config.loss_type}), KL off (β = 0), step ${st.step}`,
       annotations: st.clipped ? [{ note: `${st.clipped} tokens past the clip range: weight 0` }] : [],
       tooltip: (r, c, v) =>
         `Answer ${r + 1}, token ${c + 1}: ${v.toExponential(3)}, ratio ${fmt(st.ratios[r][c], 3)} (equation ${st.intended[r][c].toExponential(3)})`,
@@ -294,11 +305,11 @@ function setupTrainers(data: XrayData, fig: (id: string) => HTMLElement) {
   });
   caption(
     fig("trl-grpo-1"),
-    `First step. The installed default loss type is ${run.config.loss_type}: every ratio is 1 and each token gets its answer's advantage over the group's total token count. Matches the closed form to ${sci(s1.maxRelDeviation)}.`,
+    `First step. The installed default loss type is ${run.config.loss_type}: every ratio is 1 and each token gets its answer's advantage divided by the batch's total completion tokens (here one group). TRL's "dapo" is DAPO's token-level normalisation only, with symmetric clipping ε = ${run.config.epsilon}. Matches the closed form to ${sci(s1.maxRelDeviation)}.`,
   );
   caption(
     fig("trl-grpo-2"),
-    `Second step on the same answers (num_iterations ${run.config.num_iterations}). Ratios now run from ${fmt(lo, 2)} to ${fmt(hi, 2)}; ${s2.clipped} tokens moved past 1 ± ${run.config.epsilon} on the side their advantage pushes and received exactly zero, as the clipped objective prescribes. Matches to ${sci(s2.maxRelDeviation)}.`,
+    `Second step on the same answers (num_iterations ${run.config.num_iterations}). Ratios now run from ${fmt(lo, 2)} to ${fmt(hi, 2)}; ${s2.clipped} tokens moved past 1 ± ${run.config.epsilon} on the side their advantage pushes and received exactly zero, as the clipped objective prescribes. Which tokens clip depends on how this untrained probe moved in one step. Matches to ${sci(s2.maxRelDeviation)}.`,
   );
 }
 
@@ -311,6 +322,7 @@ function setupObjectives(figEl: HTMLElement) {
   const rewards = [1, 0, 1, 1, 0, 0];
   const base = [12, 40, 7, 25, 60, 18];
   const LONG = 4;
+  const L_MAX = 160; // = the slider's max attribute in story/index.html
   const SHORT = 5;
   let objective: GroupObjective = "grpo";
   eq.show(TEX.grpo);
@@ -319,7 +331,8 @@ function setupObjectives(figEl: HTMLElement) {
     const lengths = base.slice();
     lengths[LONG] = Number(slider.value);
     out.textContent = `${lengths[LONG]} tokens`;
-    const cur = groupWeights(lengths, rewards, objective);
+    // L_max for Dr. GRPO is a constant (the slider's maximum), as TRL's max_completion_length is
+    const cur = groupWeights(lengths, rewards, objective, { maxLength: L_MAX });
     const gmax = Math.max(...cur.weights.flat().map(Math.abs));
     const perTok = (i: number) => Math.abs(cur.weights[i][0]);
     const ratio = perTok(SHORT) / perTok(LONG);
@@ -330,7 +343,7 @@ function setupObjectives(figEl: HTMLElement) {
         (L, i) =>
           `${rewards[i] ? "Right" : "Wrong"}, ${L} tokens, ${cur.weights[i][0] < 0 ? "reinforced" : "penalized"}`,
       ),
-      edge: `Plate 4   Computed   ${objective === "grpo" ? "GRPO" : objective === "dapo" ? "DAPO" : "Dr. GRPO"}, on-policy, clipping inactive`,
+      edge: `Plate 4   Computed   ${objective === "grpo" ? "GRPO" : objective === "dapo" ? "DAPO" : "Dr. GRPO"}, on-policy, clipping inactive, KL off (β = 0)`,
       annotations:
         objective === "grpo"
           ? [{ rows: [LONG, LONG], note: `pushed ${fmt(ratio, 1)}× less per token` }]
