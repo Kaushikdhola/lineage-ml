@@ -24,10 +24,31 @@ interface LeakPanel {
   matrix: number[][];
   maxLeak: number;
 }
+interface SignedPanel {
+  weights: number[][];
+  intended: number[][];
+  maxRelDeviation: number;
+  residual: number;
+}
+interface DpoPanel extends SignedPanel {
+  title: string;
+  beta: number;
+  rowLabels: string[];
+  note: string;
+}
+interface GrpoRun {
+  id: string;
+  title: string;
+  config: { loss_type: string; epsilon: number; num_iterations: number };
+  lengths: number[];
+  rewards: number[];
+  steps: (SignedPanel & { step: number; ratios: number[][]; advantages: number[]; clipped: number })[];
+}
 interface XrayData {
   versions: Record<string, string>;
   aggregation: { lengths: number[]; micro: number; panels: Panel[] };
   leak: { lengths: number[]; panels: LeakPanel[] };
+  trl: { sft: { leaks: LeakPanel[] }; dpo: DpoPanel; grpo: GrpoRun[] };
 }
 
 const t = String.raw;
@@ -179,34 +200,98 @@ async function main() {
   );
   caption(fig("emu-pad-eos"), `Pad token set to EOS. ${eos.note}`);
 
-  // chapter 5: leaks
+  // chapter 5: leaks (Plates 8–11 from transformers, Plate 12 through TRL's SFTTrainer)
   const leakRow = document.querySelector<HTMLElement>("[data-leaks]")!;
-  data.leak.panels.forEach((lp, k) => {
+  const leakPanels = [...data.leak.panels, data.trl.sft.leaks.find((l) => l.id === "sft-leak-padding-free")!];
+  leakPanels.forEach((lp, k) => {
     const f = document.createElement("figure");
     f.className = "plate small square";
     f.innerHTML = `<figcaption class="plate-cap"></figcaption>`;
     leakRow.append(f);
-    const K = lp.matrix.length;
-    const leaks = lp.maxLeak > 1e-9;
-    new Film(f).show({
-      rows: lp.matrix,
-      scale: (v) => (v >= 0.999 ? 0.55 : Math.min(1, v * 6)),
-      square: true,
-      edge: `Plate ${8 + k}   Real run   ${lp.title}`,
-      annotations: leaks
-        ? [{ rows: [1, K - 1], cols: [0, K - 2], note: "documents reading each other" }]
-        : [],
-      tooltip: (r, c, v) =>
-        r === c
-          ? `Document ${r + 1}: its own gradient`
-          : `Loss of document ${r + 1} → gradient into document ${c + 1}: ${fmt(v, 4)}`,
-      summary: `${lp.title}. Largest cross-document gradient: ${fmt(lp.maxLeak, 4)} of the document's own.`,
-    });
-    caption(f, `${lp.title}. ${leaks ? `Leaks up to ${fmt(lp.maxLeak * 100, 1)}%.` : "No leak."} ${lp.note}`);
+    leakFilm(f, lp, 8 + k);
   });
+
+  // chapter 6: preference and RL trainers
+  setupTrainers(data, fig);
 
   // the one orchestrated moment: the lightbox switches on
   requestAnimationFrame(() => document.body.classList.add("lit"));
+}
+
+function leakFilm(f: HTMLElement, lp: LeakPanel, plate: number) {
+  const K = lp.matrix.length;
+  const leaks = lp.maxLeak > 1e-9;
+  new Film(f).show({
+    rows: lp.matrix,
+    scale: (v) => (v >= 0.999 ? 0.55 : Math.min(1, v * 6)),
+    square: true,
+    edge: `Plate ${plate}   Real run   ${lp.title}`,
+    annotations: leaks ? [{ rows: [1, K - 1], cols: [0, K - 2], note: "documents reading each other" }] : [],
+    tooltip: (r, c, v) =>
+      r === c
+        ? `Document ${r + 1}: its own gradient`
+        : `Loss of document ${r + 1} → gradient into document ${c + 1}: ${fmt(v, 4)}`,
+    summary: `${lp.title}. Largest cross-document gradient: ${fmt(lp.maxLeak, 4)} of the document's own.`,
+  });
+  caption(f, `${lp.title}. ${leaks ? `Leaks up to ${fmt(lp.maxLeak * 100, 1)}%.` : "No leak."} ${lp.note}`);
+}
+
+/** Signed films: brightness is |weight| on a shared scale, a weight of exactly 0 stays dark. */
+const signedScale = (gmax: number) => (v: number) =>
+  Math.abs(v) < 1e-12 ? 0 : 0.12 + 0.88 * (Math.abs(v) / gmax);
+const sci = (x: number) => x.toExponential(1);
+
+function setupTrainers(data: XrayData, fig: (id: string) => HTMLElement) {
+  const dpo = data.trl.dpo;
+  const dmax = Math.max(...dpo.weights.flat().map(Math.abs));
+  new Film(fig("trl-dpo")).show({
+    rows: dpo.weights,
+    scale: signedScale(dmax),
+    rowLabels: dpo.rowLabels.map(
+      (_, i) =>
+        `Pair ${Math.floor(i / 2) + 1} ${i % 2 ? "rejected" : "chosen"}, ${dpo.weights[i][0] > 0 ? "up" : "down"}`,
+    ),
+    edge: `Plate 13   Real run   ${dpo.title}, beta ${dpo.beta}`,
+    annotations: [{ note: "one weight per answer" }],
+    tooltip: (r, c, v) =>
+      `${dpo.rowLabels[r]}, token ${c + 1}: ${v.toExponential(3)} (equation ${dpo.intended[r][c].toExponential(3)})`,
+    summary: `${dpo.title}: per-token weights for three preference pairs.`,
+  });
+  caption(
+    fig("trl-dpo"),
+    `${dpo.title}. ${dpo.note} Matches the closed form to ${sci(dpo.maxRelDeviation)} (relative).`,
+  );
+
+  const run = data.trl.grpo.find((g) => g.id === "grpo-default")!;
+  const gmax = Math.max(...run.steps.flatMap((s) => s.weights.flat().map(Math.abs)));
+  const labels = run.lengths.map(
+    (L, i) =>
+      `Reward ${run.rewards[i]}, ${L} tokens, ${run.steps[0].advantages[i] > 0 ? "reinforced" : "penalized"}`,
+  );
+  const [s1, s2] = run.steps;
+  const ratios = s2.ratios.flat();
+  const lo = Math.min(...ratios);
+  const hi = Math.max(...ratios);
+  run.steps.forEach((st, k) => {
+    new Film(fig(`trl-grpo-${k + 1}`)).show({
+      rows: st.weights,
+      scale: signedScale(gmax),
+      rowLabels: labels,
+      edge: `Plate ${14 + k}   Real run   GRPOTrainer, default loss (${run.config.loss_type}), step ${st.step}`,
+      annotations: st.clipped ? [{ note: `${st.clipped} tokens past the clip range: weight 0` }] : [],
+      tooltip: (r, c, v) =>
+        `Answer ${r + 1}, token ${c + 1}: ${v.toExponential(3)}, ratio ${fmt(st.ratios[r][c], 3)} (equation ${st.intended[r][c].toExponential(3)})`,
+      summary: `GRPOTrainer step ${st.step}: per-token weights for four scripted answers.`,
+    });
+  });
+  caption(
+    fig("trl-grpo-1"),
+    `First step. The installed default loss type is ${run.config.loss_type}: every ratio is 1 and each token gets its answer's advantage over the group's total token count. Matches the closed form to ${sci(s1.maxRelDeviation)}.`,
+  );
+  caption(
+    fig("trl-grpo-2"),
+    `Second step on the same answers (num_iterations ${run.config.num_iterations}). Ratios now run from ${fmt(lo, 2)} to ${fmt(hi, 2)}; ${s2.clipped} tokens moved past 1 ± ${run.config.epsilon} on the side their advantage pushes and received exactly zero, as the clipped objective prescribes. Matches to ${sci(s2.maxRelDeviation)}.`,
+  );
 }
 
 function setupObjectives(figEl: HTMLElement) {

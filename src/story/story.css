@@ -339,7 +339,8 @@ main {
   gap: 22px;
 }
 .leak-row {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  /* five leak matrices fit one row at full width */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 .plate.small .pencil-lead {
   stroke-width: 2;
