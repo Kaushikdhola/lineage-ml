@@ -53,6 +53,10 @@ npm run dev             # open the printed URL
 | `npm run ci`          | Lint, format check, type check, verify and build (what CI runs) |
 | `npm run deploy`      | Build and deploy to Cloudflare Pages                            |
 
+The story's share image, `public/og/story.png`, is rendered from the hero film with
+`.venv/bin/python scripts/render_og.py http://localhost:5181` while `npm run dev` runs; re-render it when the hero
+data changes.
+
 ## Architecture
 
 ```
