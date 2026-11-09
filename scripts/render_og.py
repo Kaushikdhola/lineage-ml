@@ -3,7 +3,7 @@ Render the story's share image, public/og/story.png (1200×630), from the hero f
 
 Needs the dev server (`npm run dev`, default http://localhost:5173) or pass a base URL:
     node scripts/py.mjs scripts/render_og.py [http://localhost:5181]
-Renders the story's first viewport at device scale 2 with reduced motion (the final frame, pencil drawn),
+Renders the story's first viewport at device scale 2 with reduced motion (the final frame, regions of interest measured),
 hides the install line for the card only, then resizes to 1200×630 with Pillow if available, else sips.
 """
 import shutil

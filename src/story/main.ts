@@ -80,8 +80,11 @@ function weightFilm(p: Panel, data: XrayData, plate: number, annotations: Annota
     edge: `Plate ${plate}   ${kindLabel(p.kind)}   ${clean(p.title)}`,
     separators: seps,
     annotations,
+    // window centred on the fair share: a correct step is an even mid grey, louder tokens brighter
+    window: { level: 1, width: 1.2 },
+    corner: `${p.weights.length} sequences, ${p.weights.flat().length} targets, micro-batches of ${micro}`,
     tooltip: (r, c, v) =>
-      `Sequence ${r + 1}, token ${c + 1}: weight ${fmt(v, 3)}×  (intended ${fmt(p.intended[r][c], 2)}×)`,
+      `Sequence ${r + 1}, token ${c + 1}: ${fmt(v, 3)}× the fair share (equation ${fmt(p.intended[r][c], 2)}×)`,
     summary: `${clean(p.title)}. ${p.note} Largest deviation from the intended weights: ${dev(p.maxDeviation)}.`,
     intended: p.intended,
   };
@@ -243,8 +246,10 @@ async function main() {
   // chapter 6: preference and RL trainers
   setupTrainers(data, fig);
 
-  // the one orchestrated moment: the lightbox switches on
+  // the one orchestrated moment: the hero film is exposed, then measured
   requestAnimationFrame(() => document.body.classList.add("lit"));
+  // once measured, redraws (window and level, resize) show the regions at once instead of replaying the delay
+  setTimeout(() => document.body.classList.add("settled"), 2700);
 }
 
 function leakFilm(f: HTMLElement, lp: LeakPanel, plate: number) {

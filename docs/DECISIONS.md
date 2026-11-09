@@ -3,6 +3,19 @@
 Choices made while running slash commands without stopping (see "Autonomy" in CLAUDE.md). Each entry: date,
 command, decision, alternatives, how to revert. Newest first.
 
+## 2026-11-09 · story redesign · reading room
+
+**Decision.** The story moves from a light lightbox page with hand-drawn grease-pencil loops to a dim
+reading room where the films are the only light: a film renderer with an exposure ramp, halation, grain and
+a vignette; scanner-style corner print; bracketed regions of interest with numeric readouts in one caliper
+accent; window and level on weight films (drag, arrow keys, double-click to reset); Newsreader for the
+essay and IBM Plex Sans Condensed for everything the instrument prints. The hero becomes title plus a
+full-width film exposed by a scanning bar. No number, label or run kind changed. docs/DESIGN.md is
+rewritten to match, so later polish passes keep it. Atkinson Hyperlegible and Reenie Beanie are removed
+(nothing else used them).
+**Alternatives.** Keep the light page and only restyle the films; a light page with a dark hero only.
+**Revert.** `git revert` this commit.
+
 ## 2026-11-09 · /story-polish · three-line copy limit and phone scrolly
 
 **Decision.** "Shorten anything over three lines on a phone" is applied as a hard limit (measured at 390 and
