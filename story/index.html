@@ -244,9 +244,9 @@ def my_step(model, sequences):
 report = xray(my_step, lengths=[5, 9, 3, 12, 7, 4, 10, 6])
 report.assert_token_mean()               # fails loudly if any token is off</code></pre>
           <p>
-            Every check in the package is mutation-tested. <code>scripts/mutate.py</code> plants 42 faults,
+            Every check in the package is mutation-tested. <code>scripts/mutate.py</code> plants 43 faults,
             one at a time: 35 in the instrument itself (readout, recorder, probe, closed forms, leak harness,
-            runners, data-parallel launchers) and 7 realistic bugs injected into transformers and TRL. Every
+            runners, data-parallel launchers) and 8 realistic bugs injected into transformers and TRL. Every
             fault is caught, and each of the 52 tests catches at least one; it runs on every push to main.
           </p>
         </div>
@@ -286,8 +286,9 @@ report.assert_token_mean()               # fails loudly if any token is off</cod
         number and the unexplained remainder of the gradient reported with the measurement. Gradient reaching
         padding is collected rather than dropped, and is zero in every run. TRL runs pass
         <code>bf16=False</code>: TRL's configs default to bf16 mixed precision, which on this probe scatters
-        individual SFT weights by up to <span data-bf16></span> without re-weighting any sequence (in GRPO it
-        could also move tokens across the clip boundary).
+        individual SFT weights by up to <span data-bf16></span> without re-weighting any sequence: every
+        sequence's mean weight stays within bf16's unit roundoff, 2<sup>−8</sup> (in GRPO it could also move
+        tokens across the clip boundary).
       </p>
       <p class="links">
         <a class="text-link" href="https://github.com/kaushikdhola/lineage-ml">Source and tests on GitHub</a>

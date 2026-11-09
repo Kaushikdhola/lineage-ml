@@ -96,8 +96,8 @@ SOURCE = [
 ]
 
 # library faults, by XRAY_FAULT name (xray/tests/conftest.py)
-LIBRARY = ["ga-reverted", "label-smoothing-off", "sft-boundary-targets", "dpo-normalizer", "grpo-clip-removed",
-           "cache-never-created", "collator-keeps-pad-labels"]
+LIBRARY = ["ga-reverted", "label-smoothing-off", "sft-boundary-targets", "sft-normaliser-1pct", "dpo-normalizer",
+           "grpo-clip-removed", "cache-never-created", "collator-keeps-pad-labels"]
 
 FAILED = re.compile(r"^(FAILED|ERROR) (tests/\S+)")
 

@@ -111,7 +111,12 @@ when you train on packed sequences. Reproduction: [`repro/packed_position_ids_us
 ## Precision
 
 LLaMA's RMSNorm and the HF loss compute in float32 inside a float64 model, so measured weights carry
-up to ~2e-7 relative error. Tests use a tolerance of 1e-6. The `eager` attention path in float64 produces NaN
+up to ~2e-7 relative error. Tests use a tolerance of 1e-6. TRL's default bf16 mixed precision is tested
+against bounds derived from bf16's unit roundoff u = 2⁻⁸: per token ≤ 2u, per sequence mean ≤ u (the mean
+bound does not shrink with the number of targets, because the measured rounding errors within a sequence
+are correlated). A 1% re-weighting exceeds it 2.6×, and a planted 1% normaliser fault fails the test. These
+bounds replace a number that was first guessed and then raised after measuring; see
+`docs/DECISIONS.md`. The `eager` attention path in float64 produces NaN
 on fully padded rows; the probe uses `sdpa`, the default.
 
 ## Development
@@ -124,4 +129,4 @@ token-xray export ../public/xray/data.json   # needs ../.venv-hf445 for the 4.45
 node ../scripts/py.mjs ../scripts/mutate.py   # the mutation test, ~25 minutes
 ```
 
-Every check is mutation-tested. `scripts/mutate.py` plants 42 faults, one at a time: 35 in the instrument itself (readout, recorder, probe, closed forms, leak harness, runners, data-parallel launchers) and 7 realistic bugs injected into transformers and TRL (`xray/tests/conftest.py`). Every fault is caught, and each of the 52 tests catches at least one. It runs in CI on pushes to `main` and nightly.
+Every check is mutation-tested. `scripts/mutate.py` plants 43 faults, one at a time: 35 in the instrument itself (readout, recorder, probe, closed forms, leak harness, runners, data-parallel launchers) and 8 realistic bugs injected into transformers and TRL (`xray/tests/conftest.py`). Every fault is caught, and each of the 52 tests catches at least one. It runs in CI on pushes to `main` and nightly.
