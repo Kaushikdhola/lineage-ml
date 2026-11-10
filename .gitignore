@@ -8,3 +8,6 @@ __pycache__
 *.pyc
 .DS_Store
 screenshots/
+
+# launch post drafts stay local, never in the public repository
+docs/launch/
