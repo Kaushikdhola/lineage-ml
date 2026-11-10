@@ -13,8 +13,8 @@ description: Final checks, deploy, publish the package, and draft the launch pos
    and uses Trusted Publishing (docs/DEPLOY.md, "Publishing the package"), never a token: print
    `git tag xray-v<version> && git push origin xray-v<version>` for me to run. After the Publish workflow
    succeeds, confirm `pip install token-xray-ml` works in a fresh venv and the README example runs.
-   Only after that: switch the install command on the story page (`index.html`, `.install`) and in
-   `xray/README.md` from `pip install "git+https://github.com/kaushikdhola/lineage-ml#subdirectory=xray"`
+   Only after that: switch the install command on the story page (`index.html`, `.install`), in the root
+   `README.md` (quick start) and in `xray/README.md` from `pip install "git+https://github.com/kaushikdhola/lineage-ml#subdirectory=xray"`
    to `pip install token-xray-ml`. Until then, keep the git install.
 4. **Posts.** Posting is a hard stop: write the drafts to `docs/launch/` and I post them.
    - Reddit r/MachineLearning: title starts with `[P]`, plain and specific, no hype; body explains the
