@@ -8,11 +8,18 @@ both by running your batching and loss code on a tracer model, and compares them
 says.
 
 ```python
+import torch
+import torch.nn.functional as F
 from token_xray import xray
 
 def my_step(model, sequences):
-    # batch `sequences` exactly as your trainer does, then forward + backward
-    ...
+    # replace this body with your trainer's batching, forward and backward;
+    # this one is a correct loop: every target token is divided by the same count N
+    n = sum(len(s) - 1 for s in sequences)
+    for s in sequences:
+        ids = torch.tensor([s])
+        logits = model(input_ids=ids).logits[0, :-1]
+        (F.cross_entropy(logits, ids[0, 1:], reduction="sum") / n).backward()
 
 report = xray(my_step, lengths=[5, 9, 3, 12, 7, 4, 10, 6])
 report.assert_token_mean()   # every target token received weight 1/N
