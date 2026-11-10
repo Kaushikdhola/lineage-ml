@@ -34,6 +34,23 @@ rewritten to match, so later polish passes keep it. Atkinson Hyperlegible and Re
 **Alternatives.** Keep the light page and only restyle the films; a light page with a dark hero only.
 **Revert.** `git revert` this commit.
 
+## 2026-11-09 · /launch · install command and the 0.1.1 release
+
+**What happened.** `xray-v0.1.0` had already been tagged and pushed at `58f2f50`, and the Publish
+workflow put `token-xray-ml` 0.1.0 on PyPI (2026-11-10 02:26 UTC). That ran before this command's fix to
+`publish.yml`, so the release skipped the 4.45.2 legacy test. No code under `xray/src` changed between the
+tag and this command, so the published code is the code tested here. `pip install token-xray-ml` works
+in a fresh venv, and the README example passes.
+
+**Decision.** Switch the story's install line and `xray/README.md` to `pip install token-xray-ml`, keeping
+the git install as the way to get unreleased code. Prepare 0.1.1 (version bump only), because the 0.1.0
+page on PyPI shows the old README: it says the package "is not on PyPI yet" and its example has a `...`
+placeholder. PyPI never accepts a version twice, so a new release is the only way to fix that page. The
+0.1.1 tag also runs the full release checks, including the legacy test.
+**Alternatives.** Leave the 0.1.0 page as it is (launch visitors read a false sentence); yank 0.1.0 (would
+break installs that pinned it). **Revert.** Set the version back to 0.1.0 in `xray/pyproject.toml` and
+`token_xray/__init__.py`, and restore the git install line.
+
 ## 2026-11-09 · /launch · deploy and publish audit
 
 **Gaps found and fixed.**
