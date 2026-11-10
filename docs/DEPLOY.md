@@ -10,13 +10,16 @@ nothing.
 1. **Accounts.** Turn on two-factor authentication for GitHub and Cloudflare before anything else. A
    hijacked account is the realistic way a site like this gets taken down.
 2. **Create the Pages project.** In Cloudflare: Workers & Pages → Create → Pages → Direct upload, name it
-   `lineage-ml`. (Or run `npx wrangler pages project create lineage-ml` once, locally.)
+   `lineage-ml`. (Or run `npx wrangler pages project create lineage-ml --production-branch main` once, locally.)
 3. **Create a scoped API token.** Cloudflare → My Profile → API Tokens → Create token → Custom token with
    only _Account → Cloudflare Pages → Edit_, limited to your account. Nothing else.
 4. **Add repository secrets.** GitHub repo → Settings → Secrets and variables → Actions:
    `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (shown on the Cloudflare dashboard sidebar).
-5. **Protect `main`.** Settings → Branches → Add rule for `main`: require a pull request or at least
-   require the `CI` status check to pass; block force pushes and deletion.
+5. **Protect `main`.** Settings → Rules → Rulesets → New branch ruleset, target the default branch,
+   enforcement Active: tick **Restrict deletions** and **Block force pushes**. Pushing straight to `main`
+   still works, and the Deploy workflow runs every check before it publishes, so a failing commit never
+   goes live. Requiring a pull request or status checks would reject direct pushes; turn them on (checks
+   `verify` and `test`, zero approvals) only if you switch to working through pull requests.
 6. **Repository security.** Settings → Code security: enable Dependabot alerts, secret scanning and push
    protection. Settings → Environments → `production`: optionally require your approval for deploys.
 
