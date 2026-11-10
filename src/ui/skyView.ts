@@ -79,6 +79,7 @@ export class SkyView {
           <p class="sky-tag">The family tree of AI math. Every formula is computed, not drawn.</p>
         </div>
         <div class="sky-actions">
+          <a class="chip story-chip" href="/" title="Token X-ray: radiographs of real training steps">Token X-ray</a>
           <button class="chip" data-act="search"><span>Search</span><kbd>${isMac() ? "⌘" : "Ctrl "}K</kbd></button>
           <button class="chip" data-act="tour" title="Walk the chain from the dot product to multi-head attention"><span>Tour</span></button>
         </div>
@@ -87,7 +88,6 @@ export class SkyView {
         <span>Each star is a formula; the brightest is softmax, the hub.</span>
         <span>Rings count generations: a formula always sits outside everything it derives from.</span>
         <span class="sky-hint">${this.mode === "3d" ? "Drag to turn, scroll to zoom, click a star to approach it." : "Drag to pan, pinch to zoom, tap a star."}</span>
-        <a class="sky-story" href="/">Token X-ray: radiographs of real training steps</a>
       </p>
       <p class="sky-count">${FORMULAS.length} formulas<br />${families} families, ${EDGES.length} lineage edges</p>
       <div class="sky-hover" role="tooltip" hidden></div>
