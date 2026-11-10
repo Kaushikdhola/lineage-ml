@@ -51,19 +51,19 @@ forwarded to `/atlas/?f=dpo` by the story's script, because `_redirects` cannot 
 
 ## Publishing the package (one time, about 10 minutes)
 
-`token-xray` goes to PyPI through **Trusted Publishing**: PyPI accepts uploads only from
+`token-xray-ml` (import `token_xray`, command `token-xray`) goes to PyPI through **Trusted Publishing**: PyPI accepts uploads only from
 `.github/workflows/publish.yml` in this repository, so there is no API token to leak, and each release
 carries a signed provenance attestation.
 
 1. Create a PyPI account at pypi.org and turn on two-factor authentication (required).
 2. PyPI → Your account → Publishing → **Add a new pending publisher** (GitHub):
-   project name `token-xray`, owner `kaushikdhola`, repository `lineage-ml`, workflow `publish.yml`,
+   project name `token-xray-ml`, owner `kaushikdhola`, repository `lineage-ml`, workflow `publish.yml`,
    environment `pypi`.
 3. GitHub → Settings → Environments → **New environment** `pypi`. Optional but recommended: add yourself as
    a required reviewer, so every release waits for your click.
 4. Release: `git tag xray-v0.1.0 && git push origin xray-v0.1.0`. The workflow checks the tag matches the
    version in `xray/pyproject.toml`, runs the tests on CPU, builds, runs `twine check`, then publishes.
-5. Check from a clean folder: `python3 -m venv /tmp/tx && /tmp/tx/bin/pip install token-xray`.
+5. Check from a clean folder: `python3 -m venv /tmp/tx && /tmp/tx/bin/pip install token-xray-ml`.
 
 For the next release, bump `version` in `xray/pyproject.toml`, commit, and push a matching tag. PyPI never
 accepts the same version twice.

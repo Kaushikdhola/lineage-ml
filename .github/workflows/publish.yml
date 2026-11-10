@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/token-xray/
+      url: https://pypi.org/project/token-xray-ml/
     permissions:
       id-token: write # Trusted Publishing; the action also attaches signed provenance attestations
     steps:

@@ -3,6 +3,14 @@
 Choices made while running slash commands without stopping (see "Autonomy" in CLAUDE.md). Each entry: date,
 command, decision, alternatives, how to revert. Newest first.
 
+## 2026-11-09 · package name · token-xray-ml
+
+**Decision.** PyPI refuses `token-xray` as too similar to the existing `tokenxray`, so the distribution is
+`token-xray-ml`. The brand stays Token X-ray, the import stays `token_xray` and the command stays
+`token-xray`; only `pip install token-xray-ml` changes.
+**Alternatives.** `trainer-xray`, `gradient-xray`, `token-radiograph` (all free). **Revert.** Change
+`name` in `xray/pyproject.toml` and the install lines.
+
 ## 2026-11-09 · package release · Trusted Publishing
 
 **Decision.** `token-xray` is published by `.github/workflows/publish.yml` on `xray-v*` tags through PyPI
