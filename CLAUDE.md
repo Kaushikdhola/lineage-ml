@@ -65,7 +65,7 @@ Current UI is the **lab**: functional, verified, deliberately plain. The product
 
 ## Current priority: Token X-ray (read before any other work)
 
-The launch is **Token X-ray** (`/story/` page + `xray/` Python package): radiographs of real training
+The launch is **Token X-ray** (the home page `/`, source `index.html`, + `xray/` Python package; the atlas lives at `/atlas/`): radiographs of real training
 steps showing the gradient weight every token actually received, and cross-document gradient leaks.
 Plan: `docs/PLAN.md`. Design system: `docs/DESIGN.md` (follow it exactly). Deploy: `docs/DEPLOY.md`.
 

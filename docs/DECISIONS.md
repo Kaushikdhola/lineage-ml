@@ -16,6 +16,20 @@ rewritten to match, so later polish passes keep it. Atkinson Hyperlegible and Re
 **Alternatives.** Keep the light page and only restyle the films; a light page with a dark hero only.
 **Revert.** `git revert` this commit.
 
+## 2026-11-09 · URL layout · the story becomes the home page
+
+**Decision (chosen by the user).** Token X-ray is served at `/` (source `index.html`); the atlas moved to
+`/atlas/` (source `atlas/index.html`). `/story` and `/story/` redirect with 301 (`public/_redirects`). Old atlas
+links carry a query (`/?f=dpo`, `?tour=1`, `?sky=2d`, `?ablation=1`), which `_redirects` cannot match, so the
+story's script forwards them to `/atlas/` with the query and hash intact. Both pages have a canonical link.
+In-page links on the story scroll without writing `#section` into the address bar and move focus to the
+target; a pasted `/#objectives` still opens at that section. The sky and the lab both carry a "Token X-ray"
+chip in their header as the way back (it replaces the line in the sky's legend).
+**Alternatives.** Redirect `/` to `/story/` (smallest change, but the address bar always shows `/story/` and the
+atlas has no home URL); keep `#section` in the URL (shareable, but the user wanted clean URLs).
+**Revert.** `git revert` the two commits of this entry, and delete the Cloudflare redirect if one was added in
+the dashboard.
+
 ## 2026-11-09 · /story-polish · three-line copy limit and phone scrolly
 
 **Decision.** "Shorten anything over three lines on a phone" is applied as a hard limit (measured at 390 and

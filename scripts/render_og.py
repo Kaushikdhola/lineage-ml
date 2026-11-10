@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory() as d:
         browser = p.chromium.launch(headless=True)
         page = browser.new_context(viewport={"width": 1200, "height": 630}, device_scale_factor=2,
                                    reduced_motion="reduce").new_page()
-        page.goto(f"{base}/story/")
+        page.goto(f"{base}/")
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(2500)
         page.add_style_tag(content=".hero-meta{display:none!important}")

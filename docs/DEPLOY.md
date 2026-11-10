@@ -21,7 +21,9 @@ nothing.
    protection. Settings → Environments → `production`: optionally require your approval for deploys.
 
 From then on, every push to `main` that passes all checks deploys automatically
-(`.github/workflows/deploy.yml`). The site is at `https://lineage-ml.pages.dev`, the story at `/story/`.
+(`.github/workflows/deploy.yml`). The story is the home page, `https://lineage-ml.pages.dev/`, and the atlas is at `/atlas/`.
+Old `/story/` links redirect permanently (`public/_redirects`); old atlas links such as `/?f=dpo` are
+forwarded to `/atlas/?f=dpo` by the story's script, because `_redirects` cannot match a query string.
 
 ## What protects the site
 
@@ -38,8 +40,8 @@ From then on, every push to `main` that passes all checks deploys automatically
 
 - Code is MIT; fonts are OFL with licenses in `public/fonts/LICENSES.md`; papers are cited, not copied.
 - No logos or trademarks of other projects. Library names are used only to say what was measured.
-- Claims are exact: emulations are labelled, the `use_cache` behaviour is a candidate finding until the
-  maintainers confirm it, and the maintainers hear about it before the public does (`SECURITY.md`).
+- Claims are exact: emulations are labelled, the `use_cache` behaviour is described as the known issue it
+  is (transformers#50419), with a link to it.
 
 ## Optional
 

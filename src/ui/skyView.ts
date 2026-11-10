@@ -87,7 +87,7 @@ export class SkyView {
         <span>Each star is a formula; the brightest is softmax, the hub.</span>
         <span>Rings count generations: a formula always sits outside everything it derives from.</span>
         <span class="sky-hint">${this.mode === "3d" ? "Drag to turn, scroll to zoom, click a star to approach it." : "Drag to pan, pinch to zoom, tap a star."}</span>
-        <a class="sky-story" href="/story/">Token X-ray: radiographs of real training steps</a>
+        <a class="sky-story" href="/">Token X-ray: radiographs of real training steps</a>
       </p>
       <p class="sky-count">${FORMULAS.length} formulas<br />${families} families, ${EDGES.length} lineage edges</p>
       <div class="sky-hover" role="tooltip" hidden></div>

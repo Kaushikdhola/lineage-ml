@@ -98,6 +98,10 @@ code {
   padding: 0.08em 0.3em;
   border-radius: 3px;
 }
+/* in-page links move focus to the section itself; the section needs no ring */
+main:focus {
+  outline: none;
+}
 :focus-visible {
   outline: 2px solid var(--caliper);
   outline-offset: 3px;

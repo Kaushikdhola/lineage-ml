@@ -2,7 +2,7 @@
 description: Hostile expert review of every claim in the Token X-ray story, README and package
 ---
 
-Spawn a subagent with no prior context. Give it `story/index.html`, `src/story/main.ts`,
+Spawn a subagent with no prior context. Give it `index.html` (the story), `src/story/main.ts`,
 `public/xray/data.json`, `xray/README.md`, `xray/src/token_xray/`, `xray/tests/`, the output of
 `token-xray report`, and `src/core/aggregation.ts` with its oracle. Instruct it to act as a senior
 research scientist who trains LLMs at a frontier lab and wants to find anything that would embarrass the

@@ -18,11 +18,11 @@ on the site that a test or the exporter did not produce. Emulations are always l
 
 ## Day 2: make it unbreakable, then launch
 
-| Order | Run in Claude Code       | Outcome                                                                   |
-| ----- | ------------------------ | ------------------------------------------------------------------------- |
-| 5     | `/qa` (scope: `/story/`) | Screenshots at 1440, 1080×1350 and 390 wide; fixes                        |
-| 6     | `/redteam-xray`          | A fresh hostile reviewer checks every claim on the page and in the README |
-| 7     | `/launch`                | Deploy, publish the package, post drafts for Reddit, X and LinkedIn       |
+| Order | Run in Claude Code            | Outcome                                                                   |
+| ----- | ----------------------------- | ------------------------------------------------------------------------- |
+| 5     | `/qa` (scope: `/`, the story) | Screenshots at 1440, 1080×1350 and 390 wide; fixes                        |
+| 6     | `/redteam-xray`               | A fresh hostile reviewer checks every claim on the page and in the README |
+| 7     | `/launch`                     | Deploy, publish the package, post drafts for Reddit, X and LinkedIn       |
 
 ## Cut lines if time runs out
 
