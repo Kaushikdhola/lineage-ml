@@ -38,6 +38,7 @@ export function createLab(root: HTMLElement, hooks: LabHooks): Lab {
       <div class="brand"><button class="mark" data-act="back" title="Back to the sky">LINEAGE</button><span class="tag">The family tree of AI math. Every formula computed, not drawn.</span></div>
       <div class="top-actions">
         <span class="count">${FORMULAS.length} formulas, ${EDGES.length} lineage edges</span>
+        <a class="chip story-chip" href="/" title="Token X-ray: radiographs of real training steps">Token X-ray</a>
         <button class="chip" data-act="search"><span>Search</span><kbd>⌘K</kbd></button>
         <button class="chip" data-act="back"><span>Back to the sky</span><kbd>Esc</kbd></button>
       </div>

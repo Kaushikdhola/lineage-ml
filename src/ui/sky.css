@@ -1,6 +1,7 @@
 /* ---------- shared controls ---------- */
 .chip {
   display: inline-flex;
+  white-space: nowrap;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
@@ -12,6 +13,9 @@
   transition:
     color 0.15s,
     border-color 0.15s;
+}
+a.chip {
+  text-decoration: none; /* the way back to the story reads as a control, like its neighbours */
 }
 .chip:hover {
   color: var(--ink);
@@ -25,6 +29,7 @@ kbd {
   border-radius: 3px;
 }
 button:focus-visible,
+a.chip:focus-visible,
 input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -170,17 +175,6 @@ input:focus-visible {
 .sky-legend .sky-hint {
   margin-top: 6px;
   color: var(--ink-2);
-}
-.sky-legend .sky-story {
-  display: block;
-  margin-top: 6px;
-  color: var(--ink-2);
-  text-decoration-color: var(--line-strong);
-  text-underline-offset: 3px;
-  pointer-events: auto; /* the legend itself lets clicks through to the sky */
-}
-.sky-legend .sky-story:hover {
-  color: var(--ink);
 }
 .sky-count {
   position: absolute;
@@ -541,6 +535,10 @@ dialog.search li[aria-selected="true"] {
   .sky-tag {
     font-size: 12.5px;
     max-width: 24ch;
+  }
+  .sky-top {
+    flex-wrap: wrap; /* three chips do not fit beside the brand: they take their own row */
+    row-gap: 14px;
   }
   .sky-actions {
     gap: 8px;
