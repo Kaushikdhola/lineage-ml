@@ -1,6 +1,6 @@
 # Lineage
 
-> **New: [Token X-ray](story/index.html)** (`/story/`): radiographs of real training steps, showing the
+> **New: [Token X-ray](index.html)** (the home page, `/`; the atlas is at `/atlas/`): radiographs of real training steps, showing the
 > gradient weight every token actually received and where documents leak into each other, measured
 > through unmodified training code. Python package in [`xray/`](xray/README.md).
 

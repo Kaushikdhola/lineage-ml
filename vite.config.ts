@@ -8,7 +8,7 @@ export default defineConfig({
     // three.js alone is ~600 kB minified; split vendors so app code stays small and cacheable
     chunkSizeWarningLimit: 700,
     rollupOptions: {
-      input: { main: resolve(__dirname, "index.html"), story: resolve(__dirname, "story/index.html") },
+      input: { story: resolve(__dirname, "index.html"), atlas: resolve(__dirname, "atlas/index.html") },
       output: { manualChunks: { three: ["three"], katex: ["katex"] } },
     },
   },

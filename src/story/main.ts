@@ -5,6 +5,13 @@ import { renderTex } from "../math/katex";
 import { FormulaStage } from "../math/morph";
 import { Film, type Annotation, type FilmSpec } from "./film";
 
+// The atlas lived at / before the story took the home page. Links to it carried a query (?f=softmax,
+// ?tour=1, ?sky=2d); a _redirects rule cannot match a query, so forward those here.
+const ATLAS_PARAMS = ["f", "tour", "sky", "ablation"];
+if (ATLAS_PARAMS.some((k) => new URLSearchParams(location.search).has(k))) {
+  location.replace(`/atlas/${location.search}${location.hash}`);
+}
+
 /** small deviations in scientific notation, so a 10⁻⁷ match never reads as 0.000 */
 const dev = (x: number) => (Math.abs(x) < 1e-3 ? x.toExponential(1) : fmt(x, 3));
 
@@ -342,7 +349,7 @@ function setupObjectives(figEl: HTMLElement) {
   const rewards = [1, 0, 1, 1, 0, 0];
   const base = [12, 40, 7, 25, 60, 18];
   const LONG = 4;
-  const L_MAX = 160; // = the slider's max attribute in story/index.html
+  const L_MAX = 160; // = the slider's max attribute in index.html
   const SHORT = 5;
   let objective: GroupObjective = "grpo";
   eq.show(TEX.grpo);
@@ -394,6 +401,23 @@ function setupObjectives(figEl: HTMLElement) {
   slider.addEventListener("input", render);
   render();
 }
+
+/**
+ * In-page links (skip link, "Start with the equation") scroll without writing #section into the
+ * address bar, so the shared URL stays clean. A pasted /#objectives still opens at that section
+ * (the browser handles it). Focus moves to the target so keyboard and screen-reader users land there.
+ */
+document.addEventListener("click", (e) => {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const link = (e.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
+  const target = link && link.hash.length > 1 ? document.getElementById(link.hash.slice(1)) : null;
+  if (!target) return;
+  e.preventDefault();
+  const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+  if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+  target.focus({ preventScroll: true });
+});
 
 main().catch((err) => {
   const box = document.createElement("p");
