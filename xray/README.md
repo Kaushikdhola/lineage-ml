@@ -29,10 +29,12 @@ print(report.table())
 ## Install
 
 ```bash
-pip install "git+https://github.com/kaushikdhola/lineage-ml#subdirectory=xray"
+pip install token-xray-ml            # add [trl] for the TRL scenarios
 ```
 
-The package is not on PyPI yet; this installs it from the repository (https://github.com/kaushikdhola/lineage-ml).
+It imports as `token_xray` and installs the `token-xray` command. The name `tokenxray` is taken on PyPI.
+The latest code installs from the repository:
+`pip install "git+https://github.com/kaushikdhola/lineage-ml#subdirectory=xray"`.
 
 ## How it works
 
