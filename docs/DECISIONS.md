@@ -34,6 +34,36 @@ rewritten to match, so later polish passes keep it. Atkinson Hyperlegible and Re
 **Alternatives.** Keep the light page and only restyle the films; a light page with a dark hero only.
 **Revert.** `git revert` this commit.
 
+## 2026-11-09 · /launch · deploy and publish audit
+
+**Gaps found and fixed.**
+
+1. `publish.yml` ran the tests without the transformers 4.45.2 side environment, so `test_legacy.py` (the
+   hero plate's check) was skipped, not run, on a release. It now builds `.venv-hf445` exactly as
+   `xray.yml` does, and `pytest -rs` prints any skip.
+2. `docs/DEPLOY.md` step 5 asked for a required pull request or status check. GitHub applies those rules
+   to direct pushes, so they would reject the push-to-`main` workflow the deploy relies on. Step 5 now
+   asks only for "Restrict deletions" and "Block force pushes", and describes the pull-request setup as an
+   opt-in. The Deploy workflow already runs `npm run ci` before publishing.
+3. Step 2's command line alternative now passes `--production-branch main`.
+
+**Not checkable from the repository.** Two-factor authentication, the Cloudflare token's scope, the
+repository secrets, the ruleset, Dependabot and secret scanning, and the PyPI pending publisher all live in
+account settings. The live site on 2026-11-09 served the current build with the security headers, and
+`/story/` returned 301 to `/`.
+
+**Measurements.** The installed versions equal those in `data.json` (torch 2.15.0, transformers 5.22.2,
+TRL 1.17.1). A fresh export matched `public/xray/data.json` exactly, so it was not re-exported.
+
+**Package.** `token-xray-ml` 0.1.0 builds, `twine check --strict` passes, and the built wheel installs in
+a fresh venv; the README example, now filled in so it runs as written, passes `assert_token_mean()`. Not on
+PyPI yet, so the story and README keep the git install.
+
+**Posts.** Drafts are in `docs/launch/`. Reddit blocked automated reads of r/MachineLearning's rules, and
+third-party guides disagree, so `reddit.md` asks you to check the rules before posting.
+**Alternatives.** Skip the legacy test on release (ships an unchecked hero claim). **Revert.** `git revert`
+the commits of this entry.
+
 ## 2026-11-09 · URL layout · the story becomes the home page
 
 **Decision (chosen by the user).** Token X-ray is served at `/` (source `index.html`); the atlas moved to
