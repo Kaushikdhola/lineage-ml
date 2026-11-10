@@ -1,0 +1,54 @@
+name: Publish token-xray
+
+# Publishes xray/ to PyPI when a tag like xray-v0.1.0 is pushed. Uses PyPI Trusted Publishing: no API
+# token is stored anywhere; PyPI trusts this workflow, in this repository, in the "pypi" environment.
+# One-time setup: docs/DEPLOY.md, "Publishing the package".
+
+on:
+  push:
+    tags: ["xray-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tag matches the package version
+        run: |
+          v=$(python -c "import tomllib; print(tomllib.load(open('xray/pyproject.toml','rb'))['project']['version'])")
+          test "xray-v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but pyproject says $v"; exit 1; }
+      - name: Tests (CPU)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e "xray[dev,trl]"
+          cd xray && python -m pytest -q
+      - name: Build and check
+        run: |
+          pip install build twine
+          python -m build xray -o dist
+          twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/token-xray/
+    permissions:
+      id-token: write # Trusted Publishing; the action also attaches signed provenance attestations
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
