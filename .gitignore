@@ -9,3 +9,6 @@ __pycache__
 .DS_Store
 screenshots/
 .claude/skills/
+
+# launch post drafts stay local, never in the public repository
+docs/launch/

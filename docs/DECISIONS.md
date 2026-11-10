@@ -76,7 +76,7 @@ TRL 1.17.1). A fresh export matched `public/xray/data.json` exactly, so it was n
 a fresh venv; the README example, now filled in so it runs as written, passes `assert_token_mean()`. Not on
 PyPI yet, so the story and README keep the git install.
 
-**Posts.** Drafts are in `docs/launch/`. Reddit blocked automated reads of r/MachineLearning's rules, and
+**Posts.** Drafts are in `docs/launch/`, which is kept local and gitignored (removed from the repository on 2026-11-09 at the user's request). Reddit blocked automated reads of r/MachineLearning's rules, and
 third-party guides disagree, so `reddit.md` asks you to check the rules before posting.
 **Alternatives.** Skip the legacy test on release (ships an unchecked hero claim). **Revert.** `git revert`
 the commits of this entry.
