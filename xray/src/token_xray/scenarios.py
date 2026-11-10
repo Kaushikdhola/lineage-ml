@@ -35,7 +35,9 @@ def _versions() -> dict:
     return v
 
 
-def aggregation_panels(lengths=SITE_LENGTHS, micro=MICRO) -> list[dict]:
+def aggregation_panels(lengths=SITE_LENGTHS, micro=MICRO, require_legacy: bool = True) -> list[dict]:
+    """All aggregation panels. The 4.45.2 run needs the .venv-hf445 side environment: `export` (the site's
+    data) requires it; `report` passes require_legacy=False and leaves that panel out when it is missing."""
     b = make_batch(lengths)
     unit = unit_gradients(build_probe(b.vocab_size), b)
     k = len(lengths) // micro
@@ -94,7 +96,7 @@ def aggregation_panels(lengths=SITE_LENGTHS, micro=MICRO) -> list[dict]:
         pad_eos_panel(lengths),
         ddp_panel(True),
         ddp_panel(False),
-        run_legacy_ga(),
+        *([run_legacy_ga()] if require_legacy or legacy_available() else []),
     ]
 
 
@@ -188,6 +190,24 @@ def legacy_python() -> str:
     return os.environ.get("XRAY_HF445_PYTHON", str(Path(__file__).resolve().parents[3] / ".venv-hf445/bin/python"))
 
 
+def legacy_available() -> bool:
+    from pathlib import Path
+
+    return Path(legacy_python()).exists()
+
+
+def isolated_pythonpath(d: str) -> str:
+    """A directory holding only this package, for the side interpreter's PYTHONPATH. Putting the package's
+    parent directory there instead would, for a pip install, expose this environment's whole site-packages,
+    and the side interpreter would import the newer transformers instead of 4.45.2."""
+    import os
+    from pathlib import Path
+
+    os.makedirs(d, exist_ok=True)
+    os.symlink(Path(__file__).resolve().parent, os.path.join(d, "token_xray"))
+    return d
+
+
 def run_legacy_ga() -> dict:
     import json
     import os
@@ -198,10 +218,10 @@ def run_legacy_ga() -> dict:
     py = legacy_python()
     if not Path(py).exists():
         raise RuntimeError(f"{py} not found: run scripts/setup.sh (it creates .venv-hf445 from xray/requirements-hf445.txt)")
-    src = str(Path(__file__).resolve().parents[1])
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, "legacy.json")
-        p = subprocess.run([py, "-m", "token_xray.cli", "legacy-ga", out], env={**os.environ, "PYTHONPATH": src},
+        path = isolated_pythonpath(os.path.join(d, "path"))
+        p = subprocess.run([py, "-m", "token_xray.cli", "legacy-ga", out], env={**os.environ, "PYTHONPATH": path},
                            capture_output=True, text=True, timeout=900)
         if p.returncode != 0:
             raise RuntimeError(f"legacy-ga failed:\n{p.stderr[-3000:]}")
