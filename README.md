@@ -2,10 +2,10 @@
 
 **See what your training stack actually does to every token.**
 
-[![Token X-ray: plate 1, a real run of the transformers 4.45.2 Trainer, with two bands of sequences bracketed as regions of interest](public/og/story.png)](https://lineage-ml.pages.dev/)
+[![Token X-ray: plate 1, a real run of the transformers 4.45.2 Trainer, with two bands of sequences bracketed as regions of interest](public/og/story.png)](https://tokenxray.pages.dev/)
 
-[![CI](https://github.com/kaushikdhola/lineage-ml/actions/workflows/ci.yml/badge.svg)](https://github.com/kaushikdhola/lineage-ml/actions/workflows/ci.yml)
-[![X-ray tests](https://github.com/kaushikdhola/lineage-ml/actions/workflows/xray.yml/badge.svg)](https://github.com/kaushikdhola/lineage-ml/actions/workflows/xray.yml)
+[![CI](https://github.com/kaushikdhola/token-xray/actions/workflows/ci.yml/badge.svg)](https://github.com/kaushikdhola/token-xray/actions/workflows/ci.yml)
+[![X-ray tests](https://github.com/kaushikdhola/token-xray/actions/workflows/xray.yml/badge.svg)](https://github.com/kaushikdhola/token-xray/actions/workflows/xray.yml)
 [![PyPI](https://img.shields.io/pypi/v/token-xray-ml)](https://pypi.org/project/token-xray-ml/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -14,7 +14,7 @@ how it batches, pads, packs, accumulates and splits work across devices. Token X
 library's own, on a tracer model and reads back the weight every token actually got, then checks it
 against what the equation says. It also measures whether gradient leaks from one document into another.
 
-- **[Read the story](https://lineage-ml.pages.dev/)**: radiographs of real training steps, one chapter per
+- **[Read the story](https://tokenxray.pages.dev/)**: radiographs of real training steps, one chapter per
   mechanism.
 - **[Use the package](xray/README.md)**: `token_xray` checks your own training step in a few lines.
 
@@ -37,9 +37,9 @@ each run changes from the defaults, is in [`xray/README.md`](xray/README.md#what
 
 - **Closed forms.** Every check compares the measured weights with the weight the equation predicts
   (or, for leaks, with exactly zero), to the instrument's precision floor of about 2×10⁻⁷.
-- **Mutation-tested.** [`scripts/mutate.py`](scripts/mutate.py) plants 43 faults one at a time, 35 in the
+- **Mutation-tested.** [`scripts/mutate.py`](scripts/mutate.py) plants 46 faults one at a time, 38 in the
   instrument and 8 realistic bugs injected into transformers and TRL. Every fault is caught, and each of
-  the 52 tests catches at least one.
+  the 54 tests catches at least one.
 - **Independent oracles.** The GRPO, DAPO and Dr. GRPO coefficients on the page are computed in
   TypeScript and held to a separate Python reference and to fixtures derived from the papers.
 - **Red-teamed.** A separate review tried to break every claim; its report and the fixes are in
@@ -80,7 +80,7 @@ node scripts/xray.mjs test   # the package's tests
 
 ## Also in this repository: Lineage
 
-**[The Lineage atlas](https://lineage-ml.pages.dev/atlas/)** is a family tree of AI math: watch the
+**[The Lineage atlas](https://tokenxray.pages.dev/atlas/)** is a family tree of AI math: watch the
 equations behind modern AI evolve into each other, from the dot product to multi-head attention, from the
 Bellman equation to DPO, from benchmark accuracy to pass^k. Moving to a child formula morphs the equation
 term by term and names the step. Every formula is computed, not drawn: each one is backed by an
@@ -134,4 +134,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY
 
 ## License
 
-[MIT](LICENSE)
+Code: [MIT](LICENSE). The story's text, figures, films and measurements: [CC BY 4.0](LICENSE-CONTENT.md),
+credit "Kaushik Dhola, Token X-ray". To cite the software, use GitHub's "Cite this repository"
+([CITATION.cff](CITATION.cff)).
