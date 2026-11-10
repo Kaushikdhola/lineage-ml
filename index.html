@@ -229,22 +229,23 @@
         <div class="prose">
           <h2>X-ray your own training step</h2>
           <p>
-            Write a function that batches the probe's sequences exactly as your trainer does and runs one
-            backward pass. Token X-ray swaps in a tiny model whose every token is a unique tracer and reads
-            back the weight each one received.
+            Using the Hugging Face <code>Trainer</code> or TRL's <code>SFTTrainer</code>? Check your setup in
+            one line before you train. It replays one optimizer step of your trainer class, arguments and
+            collator on a tiny model whose every token is a unique tracer, and reads back the weight each one
+            received.
           </p>
-          <pre class="code"><code>from token_xray import xray
+          <pre class="code"><code>from token_xray import xray_trainer
 
-def my_step(model, sequences):
-    batch = my_collator(sequences)       # your code
-    loss = my_loss(model, batch)         # your code
-    loss.backward()
-
-report = xray(my_step, lengths=[5, 9, 3, 12, 7, 4, 10, 6])
-report.assert_token_mean()               # fails loudly if any token is off</code></pre>
+xray_trainer(trainer).assert_token_mean()   # about a second on CPU
+trainer.train()</code></pre>
           <p>
-            Every check is mutation-tested: <code>scripts/mutate.py</code> plants 46 faults one at a time, 38
-            in the instrument and 8 realistic bugs in transformers and TRL. All are caught, each of the 54
+            For a hand-written loop, pass a function that batches the probe's sequences as your loop does and
+            runs one backward pass: <code>xray(my_step, lengths)</code>. Both run in one process, so how a
+            multi-GPU launch normalises across ranks is not replayed.
+          </p>
+          <p>
+            Every check is mutation-tested: <code>scripts/mutate.py</code> plants 52 faults one at a time, 44
+            in the instrument and 8 realistic bugs in transformers and TRL. All are caught, each of the 60
             tests catches at least one, and it runs on every push to main.
           </p>
         </div>

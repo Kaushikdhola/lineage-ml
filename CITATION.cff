@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: Dhola
     given-names: Kaushik
-version: 0.1.2
+version: 0.2.0
 license: MIT
 url: "https://tokenxray.pages.dev/"
 repository-code: "https://github.com/kaushikdhola/token-xray"

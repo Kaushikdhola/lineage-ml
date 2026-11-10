@@ -37,9 +37,9 @@ each run changes from the defaults, is in [`xray/README.md`](xray/README.md#what
 
 - **Closed forms.** Every check compares the measured weights with the weight the equation predicts
   (or, for leaks, with exactly zero), to the instrument's precision floor of about 2×10⁻⁷.
-- **Mutation-tested.** [`scripts/mutate.py`](scripts/mutate.py) plants 46 faults one at a time, 38 in the
+- **Mutation-tested.** [`scripts/mutate.py`](scripts/mutate.py) plants 52 faults one at a time, 44 in the
   instrument and 8 realistic bugs injected into transformers and TRL. Every fault is caught, and each of
-  the 54 tests catches at least one.
+  the 60 tests catches at least one.
 - **Independent oracles.** The GRPO, DAPO and Dr. GRPO coefficients on the page are computed in
   TypeScript and held to a separate Python reference and to fixtures derived from the papers.
 - **Red-teamed.** A separate review tried to break every claim; its report and the fixes are in
@@ -50,6 +50,17 @@ each run changes from the defaults, is in [`xray/README.md`](xray/README.md#what
 ```bash
 pip install token-xray-ml
 ```
+
+Check a Hugging Face `Trainer` or TRL `SFTTrainer` before you train it:
+
+```python
+from token_xray import xray_trainer
+
+xray_trainer(trainer).assert_token_mean()   # replays one step of your setup on a tracer model
+trainer.train()
+```
+
+Or X-ray a hand-written training step:
 
 ```python
 import torch

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "token-xray-ml"  # "tokenxray" is taken on PyPI; imports stay token_xray, the CLI stays token-xray
-version = "0.1.2"
+version = "0.2.0"
 description = "See what your training stack actually does to every token: measured per-token gradient weights and cross-sequence gradient leaks, read from the library's own training loop."
 readme = "README.md"
 license = "MIT"

@@ -4,4 +4,4 @@ from .probe import build_probe, make_batch
 from .trainer_xray import TrainerReport, xray_trainer
 
 __all__ = ["xray", "xray_trainer", "Report", "TrainerReport", "build_probe", "make_batch"]
-__version__ = "0.1.2"
+__version__ = "0.2.0"
