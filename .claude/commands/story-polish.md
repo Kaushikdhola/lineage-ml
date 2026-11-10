@@ -9,7 +9,7 @@ new colours, fonts or decorative motion.
    back to the atlas from the story's colophon. Fix the colophon's GitHub link to the real repository URL.
 2. **Share image.** Render a 1200×630 `public/og/story.png` from the hero film (Playwright via the
    **webapp-testing** skill, at device scale 2, then resize). Add absolute `og:image`, `og:url` and
-   `twitter:image` to `index.html` (the story) using the production URL `https://lineage-ml.pages.dev`.
+   `twitter:image` to `index.html` (the story) using the production URL `https://tokenxray.pages.dev`.
 3. **Copy pass.** Every sentence must be true for the measured versions. Shorten anything over three
    lines on a phone. Keep sentence case.
 4. **Mobile pass.** 390×844 and 360×740: film notes readable, sticky film not covering the step text,

@@ -10,7 +10,7 @@ nothing.
 1. **Accounts.** Turn on two-factor authentication for GitHub and Cloudflare before anything else. A
    hijacked account is the realistic way a site like this gets taken down.
 2. **Create the Pages project.** In Cloudflare: Workers & Pages → Create → Pages → Direct upload, name it
-   `lineage-ml`. (Or run `npx wrangler pages project create lineage-ml --production-branch main` once, locally.)
+   `tokenxray` (`token-xray.pages.dev` belongs to someone else). (Or run `npx wrangler pages project create tokenxray --production-branch main` once, locally.)
 3. **Create a scoped API token.** Cloudflare → My Profile → API Tokens → Create token → Custom token with
    only _Account → Cloudflare Pages → Edit_, limited to your account. Nothing else.
 4. **Add repository secrets.** GitHub repo → Settings → Secrets and variables → Actions:
@@ -24,7 +24,7 @@ nothing.
    protection. Settings → Environments → `production`: optionally require your approval for deploys.
 
 From then on, every push to `main` that passes all checks deploys automatically
-(`.github/workflows/deploy.yml`). The story is the home page, `https://lineage-ml.pages.dev/`, and the atlas is at `/atlas/`.
+(`.github/workflows/deploy.yml`). The story is the home page, `https://tokenxray.pages.dev/`, and the atlas is at `/atlas/`.
 Old `/story/` links redirect permanently (`public/_redirects`); old atlas links such as `/?f=dpo` are
 forwarded to `/atlas/?f=dpo` by the story's script, because `_redirects` cannot match a query string.
 
@@ -60,7 +60,7 @@ carries a signed provenance attestation.
 
 1. Create a PyPI account at pypi.org and turn on two-factor authentication (required).
 2. PyPI → Your account → Publishing → **Add a new pending publisher** (GitHub):
-   project name `token-xray-ml`, owner `kaushikdhola`, repository `lineage-ml`, workflow `publish.yml`,
+   project name `token-xray-ml`, owner `kaushikdhola`, repository `token-xray`, workflow `publish.yml`,
    environment `pypi`.
 3. GitHub → Settings → Environments → **New environment** `pypi`. Optional but recommended: add yourself as
    a required reviewer, so every release waits for your click.

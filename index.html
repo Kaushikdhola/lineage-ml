@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="canonical" href="https://lineage-ml.pages.dev/" />
+    <link rel="canonical" href="https://tokenxray.pages.dev/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Token X-ray: the gradient weight your loss gives every token</title>
     <meta
@@ -15,8 +15,8 @@
       content="A loss function is an equation. A trainer is a program. These are radiographs of the program."
     />
     <meta property="og:type" content="article" />
-    <meta property="og:url" content="https://lineage-ml.pages.dev/" />
-    <meta property="og:image" content="https://lineage-ml.pages.dev/og/story.png" />
+    <meta property="og:url" content="https://tokenxray.pages.dev/" />
+    <meta property="og:image" content="https://tokenxray.pages.dev/og/story.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta
@@ -24,7 +24,7 @@
       content="Plate 1, a real run of the transformers 4.45.2 Trainer: twelve sequences as rows of cells, two bands bracketed as regions of interest"
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://lineage-ml.pages.dev/og/story.png" />
+    <meta name="twitter:image" content="https://tokenxray.pages.dev/og/story.png" />
     <meta name="theme-color" content="#10191F" />
     <link rel="icon" href="data:," />
     <link
@@ -243,8 +243,8 @@ def my_step(model, sequences):
 report = xray(my_step, lengths=[5, 9, 3, 12, 7, 4, 10, 6])
 report.assert_token_mean()               # fails loudly if any token is off</code></pre>
           <p>
-            Every check is mutation-tested: <code>scripts/mutate.py</code> plants 43 faults one at a time, 35
-            in the instrument and 8 realistic bugs in transformers and TRL. All are caught, each of the 52
+            Every check is mutation-tested: <code>scripts/mutate.py</code> plants 46 faults one at a time, 38
+            in the instrument and 8 realistic bugs in transformers and TRL. All are caught, each of the 54
             tests catches at least one, and it runs on every push to main.
           </p>
         </div>
@@ -289,8 +289,13 @@ report.assert_token_mean()               # fails loudly if any token is off</cod
         tokens across the clip boundary).
       </p>
       <p class="links">
-        <a class="text-link" href="https://github.com/kaushikdhola/lineage-ml">Source and tests on GitHub</a>
+        <a class="text-link" href="https://github.com/kaushikdhola/token-xray">Source and tests on GitHub</a>
         <a class="text-link" href="/atlas/">The Lineage atlas of AI formulas</a>
+      </p>
+      <p class="license">
+        Text, figures and measurements by Kaushik Dhola, licensed
+        <a class="text-link" href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a>:
+        reuse them with credit. Code under the MIT License.
       </p>
     </footer>
 
