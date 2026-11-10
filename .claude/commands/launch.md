@@ -9,13 +9,13 @@ description: Final checks, deploy, publish the package, and draft the launch pos
    (`git push origin main`, then watch the Deploy workflow). Once the site is live, a later run of this
    command opens the live story at `/` and checks headers with `curl -sI`, no console errors, films render,
    mobile works.
-3. **Package.** Build `xray/` with `python -m build` and check the README renders. Publishing is a hard
-   stop: print the exact `twine upload` commands for TestPyPI, then PyPI, for me to run with a token from an
-   environment variable (never written to disk or the repo). After I have run them, confirm
-   `pip install token-xray` works in a fresh venv and the README example runs.
-   Only after `twine upload` succeeds AND `pip install token-xray` works in a clean venv: switch the install
-   command on the story page (`index.html`, `.install`) and in `xray/README.md` from
-   `pip install "git+https://github.com/kaushikdhola/lineage-ml#subdirectory=xray"` to `pip install token-xray`. Until then, keep the git install.
+3. **Package.** Build `xray/` with `python -m build` and run `twine check --strict`. Publishing is a hard stop
+   and uses Trusted Publishing (docs/DEPLOY.md, "Publishing the package"), never a token: print
+   `git tag xray-v<version> && git push origin xray-v<version>` for me to run. After the Publish workflow
+   succeeds, confirm `pip install token-xray` works in a fresh venv and the README example runs.
+   Only after that: switch the install command on the story page (`index.html`, `.install`) and in
+   `xray/README.md` from `pip install "git+https://github.com/kaushikdhola/lineage-ml#subdirectory=xray"`
+   to `pip install token-xray`. Until then, keep the git install.
 4. **Posts.** Posting is a hard stop: write the drafts to `docs/launch/` and I post them.
    - Reddit r/MachineLearning: title starts with `[P]`, plain and specific, no hype; body explains the
      method in 4 sentences, links the story, the repo and the package, and clearly separates real runs,

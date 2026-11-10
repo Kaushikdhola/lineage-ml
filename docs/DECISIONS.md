@@ -3,6 +3,16 @@
 Choices made while running slash commands without stopping (see "Autonomy" in CLAUDE.md). Each entry: date,
 command, decision, alternatives, how to revert. Newest first.
 
+## 2026-11-09 · package release · Trusted Publishing
+
+**Decision.** `token-xray` is published by `.github/workflows/publish.yml` on `xray-v*` tags through PyPI
+Trusted Publishing (OIDC), with signed attestations, instead of `twine upload` with an API token: nothing
+long-lived to leak, and every release is tied to a tagged, tested commit. The package description drops
+"through the unmodified trainer" (the runs change a few defaults, as the methods section says) and gains
+project URLs.
+**Alternatives.** `twine upload` with a project-scoped token. **Revert.** Delete the workflow and follow
+the old `/launch` step 3.
+
 ## 2026-11-09 · story redesign · reading room
 
 **Decision.** The story moves from a light lightbox page with hand-drawn grease-pencil loops to a dim
