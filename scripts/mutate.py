@@ -75,6 +75,18 @@ SOURCE = [
     ("side-path-exposes-site-packages", PKG + "scenarios.py",
      'os.symlink(Path(__file__).resolve().parent, os.path.join(d, "token_xray"))\n    return d',
      'return str(Path(__file__).resolve().parents[1])'),
+    ("trainer-xray-default-class", PKG + "trainer_xray.py", "cls = type(trainer)  #",
+     'cls = __import__("transformers").Trainer  #'),
+    ("trainer-xray-drops-args", PKG + "trainer_xray.py", "return dataclasses.replace(args, **want), changes",
+     "return type(args)(**{k: v for k, v in want.items() if k != 'eval_strategy'}, "
+     "per_device_train_batch_size=args.per_device_train_batch_size, "
+     "gradient_accumulation_steps=args.gradient_accumulation_steps), changes"),
+    ("trainer-xray-drops-collator", PKG + "trainer_xray.py", "data_collator=trainer.data_collator)",
+     "data_collator=None)"),
+    ("trainer-xray-tracers-collide", PKG + "trainer_xray.py",
+     "return max([0, *_special_ids(processing_class)]) + 1", "return 1"),
+    ("trainer-xray-sink-ignored", PKG + "trainer_xray.py", "if self.sink > tol:", "if False:"),
+    ("trainer-xray-no-collator-fallback", PKG + "trainer_xray.py", 'if "collator" not in str(e):', "if True:"),
     ("legacy-runs-current-library", PKG + "scenarios.py",
      'return os.environ.get("XRAY_HF445_PYTHON", str(Path(__file__).resolve().parents[3] / ".venv-hf445/bin/python"))',
      'return __import__("sys").executable'),

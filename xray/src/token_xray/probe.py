@@ -43,10 +43,14 @@ class TracerBatch:
         return sum(max(0, len(s) - 1) for s in self.sequences)
 
 
-def make_batch(lengths: list[int]) -> TracerBatch:
+def make_batch(lengths: list[int], first_id: int = 1) -> TracerBatch:
+    """Unique tracer ids from first_id up. Raise first_id above a tokenizer's special ids (pad, eos, bos)
+    so a collator's own tokens never collide with a tracer."""
     if any(L < 2 for L in lengths):
         raise ValueError("every sequence needs at least 2 tokens (one target)")
-    seqs, nxt, owner = [], 1, {}
+    if first_id < 1:
+        raise ValueError("first_id must be at least 1; id 0 is reserved for padding")
+    seqs, nxt, owner = [], first_id, {}
     for i, L in enumerate(lengths):
         ids = list(range(nxt, nxt + L))
         for t in ids:

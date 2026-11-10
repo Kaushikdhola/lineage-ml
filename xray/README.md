@@ -12,6 +12,37 @@ weight each token receives. Others leak gradient from one sequence into another.
 both by running your batching and loss code on a tracer model, and compares them with what the equation
 says.
 
+## A Hugging Face `Trainer` or TRL `SFTTrainer`, in one line
+
+```python
+from token_xray import xray_trainer
+
+xray_trainer(trainer).assert_token_mean()   # about a second on CPU
+trainer.train()
+```
+
+`xray_trainer` replays one optimizer step of **your** configured trainer on the tracer probe: your trainer
+class (an overridden `compute_loss` or a `compute_loss_func` included), your `TrainingArguments` or
+`SFTConfig` (batch size, gradient accumulation, label smoothing, padding-free, packing, sampler) and your
+data collator. It swaps only the model and the data. It raises if any token's weight is off the global
+token mean, or if a loss reaches padding or special-token positions, and prints the per-sequence table.
+`report.changes` lists what the replay had to change (bf16 or fp16, compilation, DeepSpeed, FSDP), and
+`report.notes` what it does not cover: it runs in one process, so a multi-GPU launch's normalisation
+across ranks is not replayed. Trainers whose data are pairs or rollouts (DPO, GRPO) are not replayed
+this way; their weights are measured by the scenarios below.
+
+The same line works as a CI check, so a changed collator or loss cannot silently re-weight tokens:
+
+```python
+def test_training_setup_weights_every_token_equally():
+    xray_trainer(build_trainer()).assert_token_mean()   # build_trainer: your own setup code
+```
+
+## Any training loop
+
+For a hand-written loop, pass a function that batches the probe's sequences exactly as your loop does and
+runs one backward pass:
+
 ```python
 import torch
 import torch.nn.functional as F
@@ -187,7 +218,7 @@ token-xray export ../public/xray/data.json   # needs ../.venv-hf445 for the 4.45
 node ../scripts/py.mjs ../scripts/mutate.py   # the mutation test, ~25 minutes
 ```
 
-Every check is mutation-tested. [`scripts/mutate.py`](https://github.com/kaushikdhola/token-xray/blob/main/scripts/mutate.py) plants 46 faults, one at a time: 38 in the instrument itself (readout, recorder, probe, closed forms, leak harness, runners, data-parallel launchers, command line) and 8 realistic bugs injected into transformers and TRL ([`xray/tests/conftest.py`](https://github.com/kaushikdhola/token-xray/blob/main/xray/tests/conftest.py)). Every fault is caught, and each of the 54 tests catches at least one. It runs in CI on pushes to `main` and nightly.
+Every check is mutation-tested. [`scripts/mutate.py`](https://github.com/kaushikdhola/token-xray/blob/main/scripts/mutate.py) plants 52 faults, one at a time: 44 in the instrument itself (readout, recorder, probe, closed forms, leak harness, runners, data-parallel launchers, command line, trainer replay) and 8 realistic bugs injected into transformers and TRL ([`xray/tests/conftest.py`](https://github.com/kaushikdhola/token-xray/blob/main/xray/tests/conftest.py)). Every fault is caught, and each of the 60 tests catches at least one. It runs in CI on pushes to `main` and nightly.
 
 ## License
 
