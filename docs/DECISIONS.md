@@ -34,6 +34,48 @@ rewritten to match, so later polish passes keep it. Atkinson Hyperlegible and Re
 **Alternatives.** Keep the light page and only restyle the films; a light page with a dark hero only.
 **Revert.** `git revert` this commit.
 
+## 2026-11-09 · renaming · github.com/kaushikdhola/token-xray and tokenxray.pages.dev
+
+**Decision (the user's, on Claude's recommendation).** The launch is Token X-ray, so the repository and the site
+carry that name: the repository was renamed to `token-xray` (GitHub redirects the old URLs), and the site
+moves to a new Cloudflare Pages project, `tokenxray`. `token-xray.pages.dev` belongs to an unrelated site.
+The PyPI package stays `token-xray-ml`, and the atlas stays at `/atlas/`. Every link in the repository
+points to the new names; dated records (this file, `docs/redteam/`) keep the names they had. The old
+`lineage-ml` Pages project serves only a 301 redirect to the new site, preserving paths, because the PyPI
+pages of 0.1.0 and 0.1.1 link to it permanently. The trusted publisher on PyPI must name the new repository.
+**Alternatives.** Keep `lineage-ml` (the URL would not match the announced name); a custom domain (costs
+money; can be added to the `tokenxray` project later). **Revert.** Rename the repository back on GitHub and
+restore the URLs with `git revert`.
+
+## 2026-11-09 · validating the published package · three install bugs, fixed in 0.1.2
+
+**How it was validated.** `token-xray-ml` 0.1.1 installed from PyPI with no cache into a fresh venv:
+checksums match PyPI, each file carries a Trusted Publishing provenance attestation from `publish.yml` in
+the `pypi` environment, and the wheel's Python files equal the tagged source. The README example passes,
+and a planted mean-of-micro-batch-means loop is caught with the exact closed-form weights. The shipped tests
+pass against the installed copy (50 passed; the two 4.45.2 tests skip without the side environment).
+
+**Bugs found (all in 0.1.0 and 0.1.1).**
+
+1. `token-xray report` crashed on every pip install: it built the 4.45.2 panel, whose interpreter it looked
+   for at a path that exists only inside this repository. Now `report` leaves that panel out and says how
+   to include it; `export` (the site's data) still requires it.
+2. `report` also built the TRL panels, which it never prints, so a plain install without `[trl]` would
+   fail on `import trl`. It now builds only what it prints.
+3. Given a 4.45.2 interpreter, an installed copy put its whole `site-packages` on the side interpreter's
+   `PYTHONPATH`, so the "4.45.2" run imported transformers 5.22.2 and measured the fixed Trainer
+   (reproduced with 0.1.1). The side interpreter now sees only the `token_xray` package.
+4. The package did not declare `accelerate`, which the transformers Trainer requires; installs without
+   `[trl]` failed. Added `accelerate>=1.1`.
+
+Each fix has a test, and three new faults in `scripts/mutate.py` (`report-requires-legacy`,
+`report-builds-trl`, `side-path-exposes-site-packages`) are each caught. The repository's own `.venv` had the
+PyPI copy installed over the editable one, so a bare `pytest` in `xray/` tested the download, not the
+source; `node scripts/xray.mjs test` was unaffected (it puts `xray/src` first). The PyPI copy was removed
+from `.venv`.
+**Alternatives.** Make `report` require the side environment (fails for every user). **Revert.** `git revert`
+the commits of this entry.
+
 ## 2026-11-09 · /launch · install command and the 0.1.1 release
 
 **What happened.** `xray-v0.1.0` had already been tagged and pushed at `58f2f50`, and the Publish

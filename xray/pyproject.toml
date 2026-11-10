@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "token-xray-ml"  # "tokenxray" is taken on PyPI; imports stay token_xray, the CLI stays token-xray
-version = "0.1.1"
+version = "0.1.2"
 description = "See what your training stack actually does to every token: measured per-token gradient weights and cross-sequence gradient leaks, read from the library's own training loop."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10.2"
-dependencies = ["torch>=2.3", "transformers>=4.46", "numpy>=1.26"]
+dependencies = ["torch>=2.3", "transformers>=4.46", "accelerate>=1.1", "numpy>=1.26"]  # accelerate: the Trainer needs it
 keywords = ["llm", "training", "gradient", "debugging", "transformers", "trl", "grpo"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -19,9 +19,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://lineage-ml.pages.dev/"
-Source = "https://github.com/kaushikdhola/lineage-ml/tree/main/xray"
-Issues = "https://github.com/kaushikdhola/lineage-ml/issues"
+Homepage = "https://tokenxray.pages.dev/"
+Source = "https://github.com/kaushikdhola/token-xray/tree/main/xray"
+Issues = "https://github.com/kaushikdhola/token-xray/issues"
 
 [project.optional-dependencies]
 trl = ["trl>=1.0,<2"]

@@ -29,14 +29,20 @@ def main(argv: list[str] | None = None) -> int:
             json.dump(legacy_ga_panel(), f)
         return 0
 
-    from .scenarios import export
-
-    data = export()
     if a.cmd == "export":
+        from .scenarios import export
+
+        data = export()  # the site's data: every panel, including the 4.45.2 run, or an error
         with open(a.out, "w") as f:
             json.dump(data, f, separators=(",", ":"))
         print(f"wrote {a.out}")
         return 0
+
+    # report: only what it prints, so a plain `pip install token-xray-ml` (no TRL, no side environment) works
+    from .scenarios import _versions, aggregation_panels, leak_panels, legacy_available, legacy_python
+
+    data = {"versions": _versions(), "aggregation": {"panels": aggregation_panels(require_legacy=False)},
+            "leak": {"panels": leak_panels()}}
     print("versions:", data["versions"])
     print("\nAggregation (max |w*N - intended|, min cosine)")
     for pnl in data["aggregation"]["panels"]:
@@ -44,6 +50,10 @@ def main(argv: list[str] | None = None) -> int:
     print("\nLeaks (max off-diagonal)")
     for pnl in data["leak"]["panels"]:
         print(f"  [{pnl['kind']:9s}] {pnl['title']:52s} {pnl['maxLeak']:.2e}")
+    if not legacy_available():
+        print("\nSkipped the transformers 4.45.2 run (the Trainer before the October 2024 fix). It needs a separate\n"
+              "Python: pip install transformers==4.45.2 accelerate==0.34.2 torch==2.4.1 'numpy<2.1', then set\n"
+              f"XRAY_HF445_PYTHON to that interpreter (looked for {legacy_python()}).")
     return 0
 
 

@@ -2,10 +2,10 @@
 
 **Measure the gradient weight your training loop gives every token.**
 
-[![Plate 1: a real run of the transformers 4.45.2 Trainer, with two bands of sequences bracketed as regions of interest](https://raw.githubusercontent.com/kaushikdhola/lineage-ml/main/public/og/story.png)](https://lineage-ml.pages.dev/)
+[![Plate 1: a real run of the transformers 4.45.2 Trainer, with two bands of sequences bracketed as regions of interest](https://raw.githubusercontent.com/kaushikdhola/token-xray/main/public/og/story.png)](https://tokenxray.pages.dev/)
 
-[The story](https://lineage-ml.pages.dev/) shows every measurement below as a radiograph of one training
-step. Source and issues: [github.com/kaushikdhola/lineage-ml](https://github.com/kaushikdhola/lineage-ml).
+[The story](https://tokenxray.pages.dev/) shows every measurement below as a radiograph of one training
+step. Source and issues: [github.com/kaushikdhola/token-xray](https://github.com/kaushikdhola/token-xray).
 
 Many silent training bugs, and several objective design choices, show up in one quantity: the gradient
 weight each token receives. Others leak gradient from one sequence into another. Token X-ray measures
@@ -39,7 +39,11 @@ pip install token-xray-ml            # add [trl] for the TRL scenarios
 
 It imports as `token_xray` and installs the `token-xray` command (the name `tokenxray` is taken on PyPI).
 Python 3.10.2 or newer. The latest unreleased code installs from the repository:
-`pip install "git+https://github.com/kaushikdhola/lineage-ml#subdirectory=xray"`.
+`pip install "git+https://github.com/kaushikdhola/token-xray#subdirectory=xray"`.
+
+`token-xray report` re-measures the story's transformers scenarios with the libraries you have installed.
+It leaves out the transformers 4.45.2 run unless `XRAY_HF445_PYTHON` points to a separate Python with
+`transformers==4.45.2 accelerate==0.34.2 torch==2.4.1 "numpy<2.1"`, and says so.
 
 ## How it works
 
@@ -145,7 +149,7 @@ Real runs of `SFTTrainer`, `DPOTrainer` and `GRPOTrainer` (TRL 1.17.1) on the pr
   `loss_type` is `dapo`; `dapo`, `grpo` and `dr_grpo` all match the clipped surrogate at both steps,
   including the tokens the clip zeroes once ratios move. TRL's `dr_grpo` keeps `scale_rewards="group"`
   unless set to `"none"`; the published Dr. GRPO drops it. Step-1 weights are checked against
-  [`src/core/aggregation.ts`](https://github.com/kaushikdhola/lineage-ml/blob/main/src/core/aggregation.ts).
+  [`src/core/aggregation.ts`](https://github.com/kaushikdhola/token-xray/blob/main/src/core/aggregation.ts).
 
 ### Known issue: packed sequences and `use_cache`
 
@@ -160,7 +164,7 @@ A maintainer first replied that a cache should not be used during training and s
 that requirement, then noted that `use_cache` defaults to true and linked the issue to a proposed fix.
 Fixes are proposed in [#50190](https://github.com/huggingface/transformers/pull/50190) and
 [#50421](https://github.com/huggingface/transformers/pull/50421). Until one lands, pass `use_cache=False`
-when you train on packed sequences. Reproduction: [`repro/packed_position_ids_use_cache.py`](https://github.com/kaushikdhola/lineage-ml/blob/main/xray/repro/packed_position_ids_use_cache.py).
+when you train on packed sequences. Reproduction: [`repro/packed_position_ids_use_cache.py`](https://github.com/kaushikdhola/token-xray/blob/main/xray/repro/packed_position_ids_use_cache.py).
 
 ## Precision
 
@@ -170,7 +174,7 @@ against bounds derived from bf16's unit roundoff u = 2⁻⁸: per token ≤ 2u, 
 bound does not shrink with the number of targets, because the measured rounding errors within a sequence
 are correlated). A 1% re-weighting exceeds it 2.6×, and a planted 1% normaliser fault fails the test. These
 bounds replace a number that was first guessed and then raised after measuring; see
-[`docs/DECISIONS.md`](https://github.com/kaushikdhola/lineage-ml/blob/main/docs/DECISIONS.md). The `eager` attention path in float64 produces NaN
+[`docs/DECISIONS.md`](https://github.com/kaushikdhola/token-xray/blob/main/docs/DECISIONS.md). The `eager` attention path in float64 produces NaN
 on fully padded rows; the probe uses `sdpa`, the default.
 
 ## Development
@@ -183,8 +187,8 @@ token-xray export ../public/xray/data.json   # needs ../.venv-hf445 for the 4.45
 node ../scripts/py.mjs ../scripts/mutate.py   # the mutation test, ~25 minutes
 ```
 
-Every check is mutation-tested. [`scripts/mutate.py`](https://github.com/kaushikdhola/lineage-ml/blob/main/scripts/mutate.py) plants 43 faults, one at a time: 35 in the instrument itself (readout, recorder, probe, closed forms, leak harness, runners, data-parallel launchers) and 8 realistic bugs injected into transformers and TRL ([`xray/tests/conftest.py`](https://github.com/kaushikdhola/lineage-ml/blob/main/xray/tests/conftest.py)). Every fault is caught, and each of the 52 tests catches at least one. It runs in CI on pushes to `main` and nightly.
+Every check is mutation-tested. [`scripts/mutate.py`](https://github.com/kaushikdhola/token-xray/blob/main/scripts/mutate.py) plants 46 faults, one at a time: 38 in the instrument itself (readout, recorder, probe, closed forms, leak harness, runners, data-parallel launchers, command line) and 8 realistic bugs injected into transformers and TRL ([`xray/tests/conftest.py`](https://github.com/kaushikdhola/token-xray/blob/main/xray/tests/conftest.py)). Every fault is caught, and each of the 54 tests catches at least one. It runs in CI on pushes to `main` and nightly.
 
 ## License
 
-MIT. See [LICENSE](https://github.com/kaushikdhola/lineage-ml/blob/main/LICENSE).
+MIT. See [LICENSE](https://github.com/kaushikdhola/token-xray/blob/main/LICENSE).
