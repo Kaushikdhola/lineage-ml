@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use Token X-ray or its measurements, please cite it as below."
+title: "Token X-ray: measuring the gradient weight training loops give every token"
+type: software
+authors:
+  - family-names: Dhola
+    given-names: Kaushik
+version: 0.1.2
+license: MIT
+url: "https://tokenxray.pages.dev/"
+repository-code: "https://github.com/kaushikdhola/token-xray"
+repository-artifact: "https://pypi.org/project/token-xray-ml/"
+abstract: >-
+  Token X-ray runs a library's own, unmodified training loop on a tracer model and reads back the gradient
+  weight every target token actually received, then compares it with the weight the objective intends.
+  It also measures whether gradient leaks from one packed document into another. Real runs cover the
+  transformers Trainer, TRL's SFT, DPO and GRPO trainers, and data-parallel training under torchrun; every
+  check is mutation-tested.
+keywords:
+  - large language models
+  - training
+  - gradient accumulation
+  - sequence packing
+  - transformers
+  - TRL
+  - GRPO
+  - DPO
