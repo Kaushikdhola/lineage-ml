@@ -11,3 +11,6 @@ screenshots/
 
 # launch post drafts stay local, never in the public repository
 docs/launch/
+
+# rendered launch videos stay local (large binaries)
+/*.mp4
