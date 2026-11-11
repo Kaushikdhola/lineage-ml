@@ -8,3 +8,4 @@ package-lock.json
 public/xray
 **/.pytest_cache
 **/__pycache__
+xray/experiments/results

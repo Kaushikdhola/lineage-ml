@@ -197,6 +197,25 @@ Fixes are proposed in [#50190](https://github.com/huggingface/transformers/pull/
 [#50421](https://github.com/huggingface/transformers/pull/50421). Until one lands, pass `use_cache=False`
 when you train on packed sequences. Reproduction: [`repro/packed_position_ids_use_cache.py`](https://github.com/kaushikdhola/token-xray/blob/main/xray/repro/packed_position_ids_use_cache.py).
 
+## Does it change what the model learns? A small experiment
+
+[`experiments/accumulation_effect.py`](https://github.com/kaushikdhola/token-xray/blob/main/xray/experiments/accumulation_effect.py)
+trains a tiny LLaMA (2 layers) on two synthetic data sources at once, short sequences (about 10% of the
+tokens) and long ones (about 90%), with micro-batches grouped by length. Three real runs of the transformers
+Trainer start from the same weights and see the same data in the same order: the fixed Trainer (5.22.2) and
+the pre-fix Trainer (4.45.2) with 4 accumulation steps, and a control, 4.45.2 without accumulation.
+
+The bug gave the short data 50% of each step's gradient instead of about 10%. After 300 steps the long data,
+90% of the tokens, was 1.66–1.82× further from the best achievable loss in every seed (3 seeds), and the
+short data was no better off for its extra weight. The control matched the fixed Trainer to within 4·10⁻⁵ at
+every checkpoint, so the difference comes from accumulation, not from other changes between the releases.
+
+![Distance from the best achievable loss for short and long data, fixed versus buggy Trainer](https://raw.githubusercontent.com/kaushikdhola/token-xray/main/xray/experiments/results/accumulation_effect.png)
+
+This is a toy: the sizes depend on the model, the data and the step budget. It shows the direction of the
+effect, not its size in a real run. Rerun it with `node scripts/py.mjs xray/experiments/accumulation_effect.py`
+(about a minute on CPU; needs `.venv-hf445`), then `plot_accumulation_effect.py` (needs matplotlib).
+
 ## Precision
 
 LLaMA's RMSNorm and the HF loss compute in float32 inside a float64 model, so measured weights carry
