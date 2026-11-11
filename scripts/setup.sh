@@ -9,10 +9,10 @@ need python3 "install Python 3.10+ from https://python.org"
 need git "install git"
 node -e 'process.exit(+process.versions.node.split(".")[0] >= 20 ? 0 : 1)' || { echo "✗ Node 20+ required (found $(node -v))"; exit 1; }
 
-echo "→ 1/4  JavaScript dependencies"
+echo "→ 1/3  JavaScript dependencies"
 npm ci --no-audit --no-fund
 
-echo "→ 2/4  Python environment (.venv) for the oracle and browser testing"
+echo "→ 2/3  Python environment (.venv) for the oracle and browser testing"
 # Pick the newest Python available (override with PYTHON=/path/to/python). Python 3.10.0 has a
 # dataclass(slots=True) bug that crashes pytest >= 9.2, so anything older than 3.10.2 is rejected.
 PY="${PYTHON:-}"
@@ -33,7 +33,7 @@ echo "   using $(.venv/bin/python -V)"
 .venv/bin/pip install -q -r python/requirements.txt
 .venv/bin/python -m playwright install chromium
 
-echo "→ 4/4  Verifying the engine against the oracle"
+echo "→ 3/3  Verifying the engine against the oracle"
 npm run verify
 
 echo "→ token-xray: CPU PyTorch, transformers and TRL in .venv (a few minutes the first time)"
