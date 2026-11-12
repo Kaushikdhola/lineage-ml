@@ -2,7 +2,7 @@ name: Publish token-xray
 
 # Publishes xray/ to PyPI when a tag like xray-v0.1.0 is pushed. Uses PyPI Trusted Publishing: no API
 # token is stored anywhere; PyPI trusts this workflow, in this repository, in the "pypi" environment.
-# One-time setup: docs/DEPLOY.md, "Publishing the package".
+# One-time setup on PyPI: a trusted publisher for this repository, publish.yml and the "pypi" environment.
 
 on:
   push:

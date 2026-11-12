@@ -64,7 +64,7 @@ code, which lives in the runners.
 
 ## Design
 
-The story follows [docs/DESIGN.md](docs/DESIGN.md). Check changes at 390 px and with reduced motion.
+Check changes to the story at 390 px wide and with reduced motion.
 
 ## Security
 

@@ -42,8 +42,7 @@ each run changes from the defaults, is in [`xray/README.md`](xray/README.md#what
   the 60 tests catches at least one.
 - **Independent oracles.** The GRPO, DAPO and Dr. GRPO coefficients on the page are computed in
   TypeScript and held to a separate Python reference and to fixtures derived from the papers.
-- **Red-teamed.** A separate review tried to break every claim; its report and the fixes are in
-  [`docs/redteam/`](docs/redteam/) and [`docs/DECISIONS.md`](docs/DECISIONS.md).
+- **Red-teamed.** A separate review tried to break every claim; its report and the fixes are in [`docs/redteam/`](docs/redteam/).
 
 ## Quick start
 
@@ -104,7 +103,7 @@ implementation tested against independent NumPy, SciPy and statsmodels reference
 | Agents      |        8 | return → Bellman → Q-learning, REINFORCE → PPO → RLHF → DPO   |
 | Evals       |        7 | accuracy, Wilson, McNemar, pass@k, pass^k, Bradley–Terry, Elo |
 
-Planned: about 130 formulas across seven families ([docs/ROADMAP.md](docs/ROADMAP.md)).
+Planned: about 130 formulas across seven families.
 
 ## Commands
 

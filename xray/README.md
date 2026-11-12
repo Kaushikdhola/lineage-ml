@@ -223,8 +223,7 @@ up to ~2e-7 relative error. Tests use a tolerance of 1e-6. TRL's default bf16 mi
 against bounds derived from bf16's unit roundoff u = 2⁻⁸: per token ≤ 2u, per sequence mean ≤ u (the mean
 bound does not shrink with the number of targets, because the measured rounding errors within a sequence
 are correlated). A 1% re-weighting exceeds it 2.6×, and a planted 1% normaliser fault fails the test. These
-bounds replace a number that was first guessed and then raised after measuring; see
-[`docs/DECISIONS.md`](https://github.com/kaushikdhola/token-xray/blob/main/docs/DECISIONS.md). The `eager` attention path in float64 produces NaN
+bounds replace a number that was first guessed and then raised after measuring. The `eager` attention path in float64 produces NaN
 on fully padded rows; the probe uses `sdpa`, the default.
 
 ## Development
